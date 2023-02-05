@@ -248,6 +248,10 @@ namespace Flowframes.IO
             if (key == Key.exportNamePattern)     return WriteDefault(key, "[NAME]-[FACTOR]x-[AI]-[MODEL]-[FPS]fps");
             if (key == Key.exportNamePatternLoop) return WriteDefault(key, "-Loop[LOOPS]");
             // Interpolation
+            if (key == Key.depanningThresh)       return WriteDefault(key, "2");
+            if (key == Key.depanning)             return WriteDefault(key, "True");
+            if (key == Key.depanningPixelDepth)   return WriteDefault(key, "20");
+            if (key == Key.depanningMaxConsecutive)return WriteDefault(key, "2");
             if (key == Key.dedupThresh)           return WriteDefault(key, "2");
             if (key == Key.keepAudio)             return WriteDefault(key, "True");
             if (key == Key.keepSubs)              return WriteDefault(key, "True");
@@ -381,7 +385,11 @@ namespace Flowframes.IO
             uhdThresh,
             vp9Crf,
             vsRtShowOsd,
-            vsUseLsmash
+            vsUseLsmash,
+            depanningThresh,
+            depanning,
+            depanningPixelDepth,
+            depanningMaxConsecutive
         }
     }
 }

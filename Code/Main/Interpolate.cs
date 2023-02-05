@@ -17,6 +17,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using Padding = Flowframes.Data.Padding;
 using Utils = Flowframes.Main.InterpolateUtils;
+using Flowframes.Magick.Panning;
 
 namespace Flowframes
 {
@@ -168,6 +169,12 @@ namespace Flowframes
 
             if (Config.GetInt(Config.Key.dedupMode) == 1)
                 await Dedupe.Run(currentSettings.framesFolder);
+
+
+            if ( Config.GetBool(Config.Key.depanning) )
+            {
+                await Depanner.Run(currentSettings.framesFolder);
+            }
 
             if (!Config.GetBool(Config.Key.enableLoop))
             {

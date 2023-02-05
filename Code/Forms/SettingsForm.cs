@@ -108,6 +108,10 @@ namespace Flowframes.Forms
             ConfigParser.SaveComboxIndex(autoEncBackupMode);
             ConfigParser.SaveGuiElement(sbsAllowAutoEnc);
             ConfigParser.SaveGuiElement(alwaysWaitForAutoEnc);
+            ConfigParser.SaveGuiElement(depanningThresh);
+            ConfigParser.SaveGuiElement(depanning);
+            ConfigParser.SaveGuiElement(depanningPixelDepth);
+            ConfigParser.SaveGuiElement(depanningMaxConsecutive);
             // AI
             ConfigParser.SaveGuiElement(torchGpus);
             ConfigParser.SaveGuiElement(ncnnGpus);
@@ -167,6 +171,10 @@ namespace Flowframes.Forms
             ConfigParser.LoadComboxIndex(autoEncBackupMode);
             ConfigParser.LoadGuiElement(sbsAllowAutoEnc);
             ConfigParser.LoadGuiElement(alwaysWaitForAutoEnc);
+            ConfigParser.LoadGuiElement(depanningThresh);
+            ConfigParser.LoadGuiElement(depanning);
+            ConfigParser.LoadGuiElement(depanningPixelDepth);
+            ConfigParser.LoadGuiElement(depanningMaxConsecutive);
             // AI
             ConfigParser.LoadGuiElement(torchGpus);
             ConfigParser.LoadGuiElement(ncnnGpus);

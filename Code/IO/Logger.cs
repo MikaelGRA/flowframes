@@ -18,7 +18,7 @@ namespace Flowframes
         public const string defaultLogName = "sessionlog";
         public static long id;
 
-        private static Dictionary<string, string> sessionLogs = new Dictionary<string, string>();
+        private static Dictionary<string, List<string>> sessionLogs = new Dictionary<string, List<string>>();
         private static string _lastUi = "";
         public static string LastUiLine { get { return _lastUi; } }
         private static string _lastLog = "";
@@ -115,8 +115,30 @@ namespace Flowframes
 
             try
             {
-                string appendStr = noLineBreak ? $" {logStr}" : $"{Environment.NewLine}[{id.ToString().PadLeft(8, '0')}] [{time}]: {logStr}";
-                sessionLogs[filename] = (sessionLogs.ContainsKey(filename) ? sessionLogs[filename] : "") + appendStr;
+                if( !sessionLogs.TryGetValue(filename, out var logs ) )
+                {
+                    logs = new List<string>();
+                    sessionLogs.Add(filename, logs);
+                }
+
+
+                string appendStr = noLineBreak ? $" {logStr}" : $"[{id.ToString().PadLeft(8, '0')}] [{time}]: {logStr}";
+                if ( noLineBreak )
+                {
+                    if( logs.Count > 0 )
+                    {
+                        logs[ logs.Count - 1 ] += appendStr;
+                    }
+                    else
+                    {
+                        logs.Add(appendStr);
+                    }
+                }
+                else
+                {
+                    logs.Add(appendStr);
+                }
+
                 File.AppendAllText(file, appendStr);
                 id++;
             }
@@ -126,22 +148,35 @@ namespace Flowframes
             }
         }
 
-        public static string GetSessionLog(string filename)
+        public static List<string> GetSessionLog(string filename)
         {
             if (!filename.Contains(".txt"))
                 filename = Path.ChangeExtension(filename, "txt");
 
-            if (sessionLogs.ContainsKey(filename))
-                return sessionLogs[filename];
-            else
-                return "";
+            if ( !sessionLogs.TryGetValue(filename, out var logs) )
+            {
+                logs = new List<string>();
+                sessionLogs.Add(filename, logs);
+            }
+
+            return logs;
         }
 
         public static List<string> GetSessionLogLastLines(string filename, int linesCount = 5)
         {
-            string log = GetSessionLog(filename);
-            string[] lines = log.SplitIntoLines();
-            return lines.Reverse().Take(linesCount).Reverse().ToList();
+            var lines = GetSessionLog(filename);
+
+            var linesTaken = 0;
+            var list = new List<string>();
+            for( int i = lines.Count - 1; i >= 0; i-- )
+            {
+                list.Add(lines[ i ]);
+
+                linesTaken++;
+                if ( linesTaken >= linesCount ) break;
+            }
+
+            return list;
         }
 
         public static void LogIfLastLineDoesNotContainMsg(string s, bool hidden = false, bool replaceLastLine = false, string filename = "")

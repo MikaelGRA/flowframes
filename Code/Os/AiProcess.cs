@@ -14,11 +14,29 @@ using Paths = Flowframes.IO.Paths;
 using Flowframes.Media;
 using System.Drawing;
 using Flowframes.Utilities;
+using System.Threading;
+using static Flowframes.Logger;
+using System.Collections.Concurrent;
 
 namespace Flowframes.Os
 {
     class AiProcess
     {
+        public class LogEntry
+        {
+            public LogEntry(string line, AI ai, bool err)
+            {
+                Line = line;
+                Ai = ai;
+                Err = err;
+            }
+
+            public string Line { get; }
+            public AI Ai { get; }
+            public bool Err { get; }
+        }
+
+        private static BlockingCollection<LogEntry> _pending = new BlockingCollection<LogEntry>();
         public static bool hasShownError;
         public static string lastLogName;
         public static Process lastAiProcess;
@@ -27,6 +45,17 @@ namespace Flowframes.Os
 
         public static int lastStartupTimeMs = 1000;
         static string lastInPath;
+
+        static AiProcess()
+        {
+            ThreadPool.QueueUserWorkItem(state =>
+            {
+                foreach ( var item in _pending.GetConsumingEnumerable() )
+                {
+                    LogOutputImpl(item.Line, item.Ai, item.Err);
+                }
+            });
+        }
 
         public static void Kill()
         {
@@ -599,6 +628,11 @@ namespace Flowframes.Os
 
         static void LogOutput(string line, AI ai, bool err = false)
         {
+            _pending.Add(new LogEntry(line, ai, err));
+        }
+
+        static void LogOutputImpl(string line, AI ai, bool err = false)
+        {
             if (string.IsNullOrWhiteSpace(line) || line.Length < 6)
                 return;
 
@@ -607,8 +641,6 @@ namespace Flowframes.Os
 
             lastLogName = ai.LogFilename;
             Logger.Log(line, true, false, ai.LogFilename);
-
-            string lastLogLines = string.Join("\n", Logger.GetSessionLogLastLines(lastLogName, 6).Select(x => $"[{x.Split("]: [").Skip(1).FirstOrDefault()}"));
 
             if (ai.Backend == AI.AiBackend.Pytorch) // Pytorch specific
             {
@@ -642,6 +674,8 @@ namespace Flowframes.Os
 
                 if (!hasShownError && err && (line.Contains("RuntimeError") || line.Contains("ImportError") || line.Contains("OSError")))
                 {
+                    string lastLogLines = string.Join("\n", Logger.GetSessionLogLastLines(lastLogName, 6).Select(x => $"[{x.Split("]: [").Skip(1).FirstOrDefault()}"));
+
                     hasShownError = true;
                     UiUtils.ShowMessageBox($"A python error occured during interpolation!\nCheck the log for details:\n\n{lastLogLines}", UiUtils.MessageType.Error);
                 }
@@ -671,6 +705,8 @@ namespace Flowframes.Os
 
                 if (!hasShownError && err && line.MatchesWildcard("vk* failed"))
                 {
+                    string lastLogLines = string.Join("\n", Logger.GetSessionLogLastLines(lastLogName, 6).Select(x => $"[{x.Split("]: [").Skip(1).FirstOrDefault()}"));
+
                     hasShownError = true;
                     UiUtils.ShowMessageBox($"A Vulkan error occured during interpolation!\n\n{lastLogLines}", UiUtils.MessageType.Error);
                 }
@@ -680,6 +716,8 @@ namespace Flowframes.Os
             {
                 if (!hasShownError && Interpolate.currentSettings.outMode != Interpolate.OutMode.Realtime && line.ToLowerInvariant().Contains("fwrite() call failed"))
                 {
+                    string lastLogLines = string.Join("\n", Logger.GetSessionLogLastLines(lastLogName, 6).Select(x => $"[{x.Split("]: [").Skip(1).FirstOrDefault()}"));
+
                     hasShownError = true;
                     UiUtils.ShowMessageBox($"VapourSynth interpolation failed with an unknown error. Check the log for details:\n\n{lastLogLines}", UiUtils.MessageType.Error);
                 }

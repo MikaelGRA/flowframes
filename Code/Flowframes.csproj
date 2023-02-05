@@ -106,11 +106,11 @@
     <Reference Include="HTAlt.Standart, Version=0.1.6.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>packages\HTAlt.Standart.0.1.6\lib\netstandard2.0\HTAlt.Standart.dll</HintPath>
     </Reference>
-    <Reference Include="Magick.NET-Q8-AnyCPU, Version=7.21.1.0, Culture=neutral, PublicKeyToken=2004825badfa91ec, processorArchitecture=MSIL">
-      <HintPath>packages\Magick.NET-Q8-AnyCPU.7.21.1\lib\net40\Magick.NET-Q8-AnyCPU.dll</HintPath>
+    <Reference Include="Magick.NET-Q8-OpenMP-x64, Version=12.2.0.0, Culture=neutral, PublicKeyToken=2004825badfa91ec, processorArchitecture=AMD64">
+      <HintPath>packages\Magick.NET-Q8-OpenMP-x64.12.2.2\lib\netstandard20\Magick.NET-Q8-OpenMP-x64.dll</HintPath>
     </Reference>
-    <Reference Include="Magick.NET.Core, Version=4.1.0.0, Culture=neutral, PublicKeyToken=2004825badfa91ec, processorArchitecture=MSIL">
-      <HintPath>packages\Magick.NET.Core.4.1.0\lib\net40\Magick.NET.Core.dll</HintPath>
+    <Reference Include="Magick.NET.Core, Version=12.2.0.0, Culture=neutral, PublicKeyToken=2004825badfa91ec, processorArchitecture=MSIL">
+      <HintPath>packages\Magick.NET.Core.12.2.2\lib\netstandard20\Magick.NET.Core.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.VisualBasic" />
     <Reference Include="Microsoft.Win32.Primitives, Version=4.0.2.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
@@ -413,6 +413,11 @@
     <Compile Include="IO\Symlinks.cs" />
     <Compile Include="Magick\Blend.cs" />
     <Compile Include="Magick\MagickExtensions.cs" />
+    <Compile Include="Magick\Panning\Depanner.cs" />
+    <Compile Include="Magick\Panning\ImagePanningCacheResult.cs" />
+    <Compile Include="Magick\Panning\MagickImageWithPath.cs" />
+    <Compile Include="Magick\Panning\PanningFrameLocator.cs" />
+    <Compile Include="Magick\Panning\PanningRemovalContext.cs" />
     <Compile Include="Magick\SceneDetect.cs" />
     <Compile Include="Main\AiModels.cs" />
     <Compile Include="Main\AutoEncode.cs" />
@@ -516,6 +521,7 @@
       <DependentUpon>Resources.resx</DependentUpon>
       <DesignTime>True</DesignTime>
     </Compile>
+    <None Include=".editorconfig" />
     <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
@@ -585,5 +591,7 @@
     </PropertyGroup>
     <Error Condition="!Exists('packages\Fody.6.4.0\build\Fody.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\Fody.6.4.0\build\Fody.targets'))" />
     <Error Condition="!Exists('packages\Costura.Fody.5.1.0\build\Costura.Fody.props')" Text="$([System.String]::Format('$(ErrorText)', 'packages\Costura.Fody.5.1.0\build\Costura.Fody.props'))" />
+    <Error Condition="!Exists('packages\Magick.NET-Q8-OpenMP-x64.12.2.2\build\netstandard20\Magick.NET-Q8-OpenMP-x64.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\Magick.NET-Q8-OpenMP-x64.12.2.2\build\netstandard20\Magick.NET-Q8-OpenMP-x64.targets'))" />
   </Target>
+  <Import Project="packages\Magick.NET-Q8-OpenMP-x64.12.2.2\build\netstandard20\Magick.NET-Q8-OpenMP-x64.targets" Condition="Exists('packages\Magick.NET-Q8-OpenMP-x64.12.2.2\build\netstandard20\Magick.NET-Q8-OpenMP-x64.targets')" />
 </Project>
