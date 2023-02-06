@@ -57,8 +57,6 @@ namespace Flowframes.Magick.Panning
                     var pct = ( progress / (double)Frames.Length * 100 );
 
                     Progress?.Invoke((int)Math.Round(pct, 0));
-
-                    Console.WriteLine(progress + " / " + Frames.Length);
                 }
             }
         }

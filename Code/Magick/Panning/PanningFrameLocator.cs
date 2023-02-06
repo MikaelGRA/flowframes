@@ -63,7 +63,7 @@ namespace Flowframes.Magick.Panning
                 {
                     var si = i;
                     var frame = frames[ i ];
-                    if ( context.UnremovableImages.ContainsKey(frame) ) continue;
+                    //if ( context.UnremovableImages.ContainsKey(frame) ) continue;
 
                     var img1 = context.GetOrCreateImage(frame);
 
@@ -125,6 +125,27 @@ namespace Flowframes.Magick.Panning
                             }
                             else
                             {
+                                if ( imagesToRemoveThisIteration[ 0 ] != null )
+                                {
+                                    // Do not remove if the non-panning is caused by a scene change!
+
+                                    double errNormalizedCrossCorrelation = img1.Image.Compare(img2.Image, ErrorMetric.NormalizedCrossCorrelation);
+                                    double errRootMeanSquared = img1.Image.Compare(img2.Image, ErrorMetric.RootMeanSquared);
+
+                                    bool rmsNccTrigger = errRootMeanSquared > ( 0.18f * 2 ) && errNormalizedCrossCorrelation < ( 0.6f / 2 );
+                                    bool nccRmsTrigger = errNormalizedCrossCorrelation < ( 0.45f / 2 ) && errRootMeanSquared > ( 0.11f * 2 );
+
+                                    if ( rmsNccTrigger && nccRmsTrigger )
+                                    {
+                                        context.UnremovableImages.TryAdd(img1.Path, true);
+                                        context.UnremovableImages.TryAdd(img2.Path, true);
+
+                                        //Directory.CreateDirectory( "unremoved" );
+                                        //img1.Image.Write( @"unremoved\" + Path.GetFileName( img1.Path ) );
+                                        //img2.Image.Write( @"unremoved\" + Path.GetFileName( img2.Path ) );
+                                    }
+                                }
+
                                 break;
                             }
                         }
@@ -176,19 +197,44 @@ namespace Flowframes.Magick.Panning
 
         }
 
-        static bool IsPanningHorizontally(MagickImage img1, MagickImage img2, int pixelDepth, double threshold)
+        static int GetLeeway(int width)
         {
-            var sideDepth = pixelDepth * 2;
+            if ( width <= 720 )
+            {
+                return 15;
+            }
+            else if ( width <= 1280 )
+            {
+                return 20;
+            }
+            else if ( width <= 1920 )
+            {
+                return 30;
+            }
+            else if ( width <= 2560 )
+            {
+                return 40;
+            }
+            else
+            {
+                return 50;
+            }
+        }
+
+        static bool IsPanningHorizontally(MagickImage img1, MagickImage img2, int pixels, double threshold)
+        {
+            var leeway = GetLeeway(img1.Width);
+            var sideDepth = pixels + leeway;
             var widthOffset = img1.Width - sideDepth;
 
-            var rightbar = img1.Clone(img1.Width - pixelDepth, 0, pixelDepth, img1.Height);
+            var rightbar = img1.Clone(img1.Width - pixels, 0, pixels, img1.Height);
             //rightbar.Write( "rightbar.jpg" );
-            var rightResult = img2.Clone(img1.Width - sideDepth, 0, sideDepth, img1.Height).SubImageSearch(rightbar, ErrorMetric.Fuzz, 0);
+            var rightResult = img2.Clone(img1.Width - sideDepth, 0, sideDepth, img1.Height).SubImageSearch(rightbar, ErrorMetric.Fuzz);
             var rightPosition = rightResult.BestMatch;
             var rightDiff = rightResult.SimilarityMetric * 100;
-            if ( rightDiff < threshold )
+            if ( rightDiff < threshold * 2 )
             {
-                var offset = img1.Width - ( widthOffset + rightPosition.X + pixelDepth );
+                var offset = img1.Width - ( widthOffset + rightPosition.X + pixels );
 
                 var sharedArea1 = img1.Clone(offset, 0, img1.Width - offset, img1.Height);
                 //sharedArea1.Write( "sharedArea1.jpg" );
@@ -197,18 +243,18 @@ namespace Flowframes.Magick.Panning
                 //sharedArea2.Write( "sharedArea2.jpg" );
 
                 double diff = sharedArea1.Compare(sharedArea2, ErrorMetric.Fuzz) * 100;
-                if ( diff < threshold )
+                if ( diff < ( threshold * 1.125 ) )
                 {
                     return true;
                 }
             }
 
-            var leftbar = img1.Clone(0, 0, pixelDepth, img1.Height);
+            var leftbar = img1.Clone(0, 0, pixels, img1.Height);
             //leftbar.Write( "leftbar.jpg" );
             var leftResult = img2.Clone(0, 0, sideDepth, img2.Height).SubImageSearch(leftbar, ErrorMetric.Fuzz);
             var leftPosition = leftResult.BestMatch;
             var leftDiff = leftResult.SimilarityMetric * 100;
-            if ( leftDiff < threshold )
+            if ( leftDiff < threshold * 2 )
             {
                 var offset = leftPosition.X;
 
@@ -219,7 +265,7 @@ namespace Flowframes.Magick.Panning
                 //sharedArea2.Write( "sharedArea2.jpg" );
 
                 double diff = sharedArea1.Compare(sharedArea2, ErrorMetric.Fuzz) * 100;
-                if ( diff < threshold )
+                if ( diff < ( threshold * 1.125 ) )
                 {
                     return true;
                 }
@@ -229,17 +275,18 @@ namespace Flowframes.Magick.Panning
             return false;
         }
 
-        static bool IsPanningVertically(MagickImage img1, MagickImage img2, int pixelDepth, double threshold)
+        static bool IsPanningVertically(MagickImage img1, MagickImage img2, int pixels, double threshold)
         {
-            var sideDepth = pixelDepth * 2;
+            var leeway = GetLeeway(img1.Width);
+            var sideDepth = pixels + leeway;
             var heightOffset = img1.Height - sideDepth;
 
-            var topbar = img1.Clone(0, 0, img1.Width, pixelDepth);
+            var topbar = img1.Clone(0, 0, img1.Width, pixels);
             //topbar.Write( "topbar.jpg" );
-            var topResult = img2.Clone(0, 0, img1.Width, sideDepth).SubImageSearch(topbar, ErrorMetric.Fuzz, 0);
+            var topResult = img2.Clone(0, 0, img1.Width, sideDepth).SubImageSearch(topbar, ErrorMetric.Fuzz);
             var topPosition = topResult.BestMatch;
             var topDiff = topResult.SimilarityMetric * 100;
-            if ( topDiff < threshold )
+            if ( topDiff < threshold * 2 )
             {
                 var offset = topPosition.Y;
 
@@ -250,18 +297,18 @@ namespace Flowframes.Magick.Panning
                 //sharedArea2.Write( "sharedArea2.jpg" );
 
                 double diff = sharedArea1.Compare(sharedArea2, ErrorMetric.Fuzz) * 100;
-                if ( diff < threshold )
+                if ( diff < ( threshold * 1.125 ) )
                 {
                     return true;
                 }
             }
 
-            var bottombar = img1.Clone(0, img1.Height - pixelDepth, img1.Width, pixelDepth);
+            var bottombar = img1.Clone(0, img1.Height - pixels, img1.Width, pixels);
             //bottombar.Write( "bottombar.jpg" );
-            var bottomResult = img2.Clone(0, img2.Height - sideDepth, img1.Width, sideDepth).SubImageSearch(bottombar, ErrorMetric.Fuzz, 0);
+            var bottomResult = img2.Clone(0, img2.Height - sideDepth, img1.Width, sideDepth).SubImageSearch(bottombar, ErrorMetric.Fuzz);
             var bottomPosition = bottomResult.BestMatch;
             var bottomDiff = bottomResult.SimilarityMetric * 100;
-            if ( bottomDiff < threshold )
+            if ( bottomDiff < threshold * 2 )
             {
                 // create two images to compare
                 var offset = img1.Height - ( heightOffset + bottomPosition.Y + bottomPosition.Height );
@@ -273,9 +320,135 @@ namespace Flowframes.Magick.Panning
                 //sharedArea2.Write( "sharedArea2.jpg" );
 
                 double diff = sharedArea1.Compare(sharedArea2, ErrorMetric.Fuzz) * 100;
-                if ( diff < threshold )
+                if ( diff < ( threshold * 1.125 ) )
                 {
                     return true;
+                }
+            }
+
+            return false;
+        }
+
+        static bool IsPanningHorizontallyAndOrVertically(MagickImage img1, MagickImage img2, int pixels, double threshold)
+        {
+            var leeway = 8;
+            var yMod = leeway;
+            var xMod = leeway;
+            var sideDepth = pixels + leeway;
+            var widthOffset = img1.Width - sideDepth;
+            var heightOffset = img1.Height - sideDepth;
+
+            var isPanningHorizontally = false;
+
+            var rightbar = img1.Clone(img1.Width - pixels, yMod, pixels, img1.Height - yMod * 2);
+            //rightbar.Write( "rightbar.jpg" );
+            var rightResult = img2.Clone(img1.Width - sideDepth, 0, sideDepth, img1.Height).SubImageSearch(rightbar, ErrorMetric.Fuzz);
+            var rightPosition = rightResult.BestMatch;
+            var rightDiff = rightResult.SimilarityMetric * 100;
+            if ( rightDiff < threshold * 2 )
+            {
+                var xOffset = img1.Width - ( widthOffset + rightPosition.X + pixels );
+                var yOffset = rightPosition.Y - yMod;
+
+                var sharedArea1 = img1.Clone(xOffset, yMod, img1.Width - xOffset, img1.Height - yMod * 2);
+                //sharedArea1.Write( "sharedArea1.jpg" );
+
+                var sharedArea2 = img2.Clone(0, yMod + yOffset, img2.Width - xOffset, img2.Height - yMod * 2 + yOffset);
+                //sharedArea2.Write( "sharedArea2.jpg" );
+
+                double diff = sharedArea1.Compare(sharedArea2, ErrorMetric.Fuzz) * 100;
+                if ( diff < ( threshold * 1.125 ) )
+                {
+                    if ( yOffset == 0 )
+                    {
+                        return true;
+                    }
+                    isPanningHorizontally = true;
+                }
+            }
+
+            if ( !isPanningHorizontally )
+            {
+                var leftbar = img1.Clone(0, yMod, pixels, img1.Height - yMod * 2);
+                //leftbar.Write( "leftbar.jpg" );
+                var leftResult = img2.Clone(0, 0, sideDepth, img2.Height).SubImageSearch(leftbar, ErrorMetric.Fuzz);
+                var leftPosition = leftResult.BestMatch;
+                var leftDiff = leftResult.SimilarityMetric * 100;
+                if ( leftDiff < threshold * 2 )
+                {
+                    var offset = leftPosition.X;
+                    var yOffset = leftPosition.Y - yMod;
+
+                    var sharedArea1 = img1.Clone(0, yMod, img1.Width - offset, img1.Height - yMod * 2);
+                    //sharedArea1.Write( "sharedArea1.jpg" );
+
+                    var sharedArea2 = img2.Clone(offset, yMod + yOffset, img2.Width - offset, img2.Height - yMod * 2 + yOffset);
+                    //sharedArea2.Write( "sharedArea2.jpg" );
+
+                    double diff = sharedArea1.Compare(sharedArea2, ErrorMetric.Fuzz) * 100;
+                    if ( diff < ( threshold * 1.125 ) )
+                    {
+                        if ( yOffset == 0 )
+                        {
+                            return true;
+                        }
+                        isPanningHorizontally = true;
+                    }
+                }
+            }
+
+            var topbar = img1.Clone(xMod, 0, img1.Width - xMod * 2, pixels);
+            //topbar.Write( "topbar.jpg" );
+            var topResult = img2.Clone(0, 0, img1.Width, sideDepth).SubImageSearch(topbar, ErrorMetric.Fuzz);
+            var topPosition = topResult.BestMatch;
+            var topDiff = topResult.SimilarityMetric * 100;
+            if ( topDiff < threshold * 2 )
+            {
+                var yOffset = topPosition.Y;
+                var xOffset = topPosition.X - xMod; // xOffset is between 0 and 16
+
+                var sharedArea1 = img1.Clone(xMod, 0, img1.Width - xMod * 2, img1.Height - yOffset);
+                //sharedArea1.Write( "sharedArea1.jpg" );
+
+                var sharedArea2 = img2.Clone(xMod + xOffset, yOffset, img2.Width - xMod * 2 + xOffset, img2.Height - yOffset);
+                //sharedArea2.Write( "sharedArea2.jpg" );
+
+                double diff = sharedArea1.Compare(sharedArea2, ErrorMetric.Fuzz) * 100;
+                if ( diff < ( threshold * 1.125 ) )
+                {
+                    if ( xOffset == 0 )
+                    {
+                        return true;
+                    }
+                    return isPanningHorizontally;
+                }
+            }
+
+            var bottombar = img1.Clone(xMod, img1.Height - pixels, img1.Width - 2 * xMod, pixels);
+            //bottombar.Write( "bottombar.jpg" );
+            var bottomResult = img2.Clone(0, img2.Height - sideDepth, img1.Width, sideDepth).SubImageSearch(bottombar, ErrorMetric.Fuzz);
+            var bottomPosition = bottomResult.BestMatch;
+            var bottomDiff = bottomResult.SimilarityMetric * 100;
+            if ( bottomDiff < threshold * 2 )
+            {
+                // create two images to compare
+                var yOffset = img1.Height - ( heightOffset + bottomPosition.Y + bottomPosition.Height );
+                var xOffset = bottomPosition.X - xMod;
+
+                var sharedArea1 = img1.Clone(xMod, yOffset, img1.Width - xMod * 2, img1.Height - yOffset);
+                //sharedArea1.Write( "sharedArea1.jpg" );
+
+                var sharedArea2 = img2.Clone(xMod + xOffset, 0, img2.Width - xMod * 2 + xOffset, img2.Height - yOffset);
+                //sharedArea2.Write( "sharedArea2.jpg" );
+
+                double diff = sharedArea1.Compare(sharedArea2, ErrorMetric.Fuzz) * 100;
+                if ( diff < ( threshold * 1.125 ) )
+                {
+                    if ( xOffset == 0 )
+                    {
+                        return true;
+                    }
+                    return isPanningHorizontally;
                 }
             }
 
