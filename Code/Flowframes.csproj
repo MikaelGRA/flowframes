@@ -415,6 +415,7 @@
     <Compile Include="Magick\MagickExtensions.cs" />
     <Compile Include="Magick\Panning\Depanner.cs" />
     <Compile Include="Magick\Panning\ImagePanningCacheResult.cs" />
+    <Compile Include="Magick\Panning\LinearPanningCheckResult.cs" />
     <Compile Include="Magick\Panning\MagickImageWithPath.cs" />
     <Compile Include="Magick\Panning\PanningFrameLocator.cs" />
     <Compile Include="Magick\Panning\PanningRemovalContext.cs" />

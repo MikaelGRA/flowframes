@@ -177,7 +177,7 @@ namespace Flowframes.Magick.Panning
 
         static bool IsPanning(MagickImageWithPath img1, MagickImageWithPath img2, PanningRemovalContext context)
         {
-            var pixelDepth = context.PixelDepth;
+            var pixels = context.PixelDepth;
             var threshold = context.Threshold;
             var key = new ImagePanningCacheResult(img1.Path, img2.Path);
 
@@ -186,15 +186,41 @@ namespace Flowframes.Magick.Panning
                 return result;
             }
 
-            double diff = img1.Image.Compare(img2.Image, ErrorMetric.Fuzz) * 100;
+            result = false;
+            try
+            {
+                double diff = img1.Image.Compare(img2.Image, ErrorMetric.Fuzz) * 100;
+                bool initialCheck = img1.Image.Height == img2.Image.Height && img1.Image.Width == img2.Image.Width && diff > threshold;
+                if ( initialCheck )
+                {
+                    var horizontalResult = IsPanningHorizontally(img1.Image, img2.Image, pixels, threshold);
+                    if ( horizontalResult == LinearPanningCheckResult.Match )
+                    {
+                        result = true;
+                        return result;
+                    }
 
-            result = img1.Image.Height == img2.Image.Height && img1.Image.Width == img2.Image.Width && diff > threshold &&
-               ( IsPanningHorizontally(img1.Image, img2.Image, pixelDepth, threshold) || IsPanningVertically(img1.Image, img2.Image, pixelDepth, threshold) );
+                    var verticalResult = IsPanningVertically(img1.Image, img2.Image, pixels, threshold);
+                    if ( verticalResult == LinearPanningCheckResult.Match )
+                    {
+                        result = true;
+                        return result;
+                    }
 
-            context.CachedPanningResults.TryAdd(key, result);
+                    //if( horizontalResult == LinearPanningCheckResult.CheckOtherDirection && verticalResult == LinearPanningCheckResult.CheckOtherDirection )
+                    //{
+                    //   result = IsPanningHorizontallyAndOrVertically( img1.Image, img2.Image, pixels, threshold );
 
-            return result;
+                    //   return result;
+                    //}
+                }
 
+                return result;
+            }
+            finally
+            {
+                context.CachedPanningResults.TryAdd(key, result);
+            }
         }
 
         static int GetLeeway(int width)
@@ -221,8 +247,10 @@ namespace Flowframes.Magick.Panning
             }
         }
 
-        static bool IsPanningHorizontally(MagickImage img1, MagickImage img2, int pixels, double threshold)
+        static LinearPanningCheckResult IsPanningHorizontally(MagickImage img1, MagickImage img2, int pixels, double threshold)
         {
+            var fallbackResult = LinearPanningCheckResult.Mismatch;
+            var checkAgain = threshold * 1.5;
             var leeway = GetLeeway(img1.Width);
             var sideDepth = pixels + leeway;
             var widthOffset = img1.Width - sideDepth;
@@ -243,9 +271,13 @@ namespace Flowframes.Magick.Panning
                 //sharedArea2.Write( "sharedArea2.jpg" );
 
                 double diff = sharedArea1.Compare(sharedArea2, ErrorMetric.Fuzz) * 100;
-                if ( diff < ( threshold * 1.125 ) )
+                if ( diff < threshold )
                 {
-                    return true;
+                    return LinearPanningCheckResult.Match;
+                }
+                else if ( diff < checkAgain )
+                {
+                    fallbackResult = LinearPanningCheckResult.CheckOtherDirection;
                 }
             }
 
@@ -265,18 +297,23 @@ namespace Flowframes.Magick.Panning
                 //sharedArea2.Write( "sharedArea2.jpg" );
 
                 double diff = sharedArea1.Compare(sharedArea2, ErrorMetric.Fuzz) * 100;
-                if ( diff < ( threshold * 1.125 ) )
+                if ( diff < threshold )
                 {
-                    return true;
+                    return LinearPanningCheckResult.Match;
+                }
+                else if ( diff < checkAgain )
+                {
+                    fallbackResult = LinearPanningCheckResult.CheckOtherDirection;
                 }
             }
 
-
-            return false;
+            return fallbackResult;
         }
 
-        static bool IsPanningVertically(MagickImage img1, MagickImage img2, int pixels, double threshold)
+        static LinearPanningCheckResult IsPanningVertically(MagickImage img1, MagickImage img2, int pixels, double threshold)
         {
+            var fallbackResult = LinearPanningCheckResult.Mismatch;
+            var checkAgain = threshold * 1.5;
             var leeway = GetLeeway(img1.Width);
             var sideDepth = pixels + leeway;
             var heightOffset = img1.Height - sideDepth;
@@ -297,9 +334,13 @@ namespace Flowframes.Magick.Panning
                 //sharedArea2.Write( "sharedArea2.jpg" );
 
                 double diff = sharedArea1.Compare(sharedArea2, ErrorMetric.Fuzz) * 100;
-                if ( diff < ( threshold * 1.125 ) )
+                if ( diff < threshold )
                 {
-                    return true;
+                    return LinearPanningCheckResult.Match;
+                }
+                else if ( diff < checkAgain )
+                {
+                    fallbackResult = LinearPanningCheckResult.CheckOtherDirection;
                 }
             }
 
@@ -320,13 +361,17 @@ namespace Flowframes.Magick.Panning
                 //sharedArea2.Write( "sharedArea2.jpg" );
 
                 double diff = sharedArea1.Compare(sharedArea2, ErrorMetric.Fuzz) * 100;
-                if ( diff < ( threshold * 1.125 ) )
+                if ( diff < threshold )
                 {
-                    return true;
+                    return LinearPanningCheckResult.Match;
+                }
+                else if ( diff < checkAgain )
+                {
+                    fallbackResult = LinearPanningCheckResult.CheckOtherDirection;
                 }
             }
 
-            return false;
+            return fallbackResult;
         }
 
         static bool IsPanningHorizontallyAndOrVertically(MagickImage img1, MagickImage img2, int pixels, double threshold)
@@ -357,7 +402,7 @@ namespace Flowframes.Magick.Panning
                 //sharedArea2.Write( "sharedArea2.jpg" );
 
                 double diff = sharedArea1.Compare(sharedArea2, ErrorMetric.Fuzz) * 100;
-                if ( diff < ( threshold * 1.125 ) )
+                if ( diff < threshold )
                 {
                     if ( yOffset == 0 )
                     {
@@ -386,7 +431,7 @@ namespace Flowframes.Magick.Panning
                     //sharedArea2.Write( "sharedArea2.jpg" );
 
                     double diff = sharedArea1.Compare(sharedArea2, ErrorMetric.Fuzz) * 100;
-                    if ( diff < ( threshold * 1.125 ) )
+                    if ( diff < threshold )
                     {
                         if ( yOffset == 0 )
                         {
@@ -414,7 +459,7 @@ namespace Flowframes.Magick.Panning
                 //sharedArea2.Write( "sharedArea2.jpg" );
 
                 double diff = sharedArea1.Compare(sharedArea2, ErrorMetric.Fuzz) * 100;
-                if ( diff < ( threshold * 1.125 ) )
+                if ( diff < threshold )
                 {
                     if ( xOffset == 0 )
                     {
@@ -442,7 +487,7 @@ namespace Flowframes.Magick.Panning
                 //sharedArea2.Write( "sharedArea2.jpg" );
 
                 double diff = sharedArea1.Compare(sharedArea2, ErrorMetric.Fuzz) * 100;
-                if ( diff < ( threshold * 1.125 ) )
+                if ( diff < threshold )
                 {
                     if ( xOffset == 0 )
                     {
