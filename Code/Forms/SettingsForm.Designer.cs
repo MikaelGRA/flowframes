@@ -32,6 +32,7 @@
          System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(SettingsForm));
          this.settingsTabList = new Cyotek.Windows.Forms.TabList();
          this.generalTab = new Cyotek.Windows.Forms.TabListPage();
+         this.pauseBeforeInterpolation = new System.Windows.Forms.CheckBox();
          this.custOutDirBrowseBtn = new HTAlt.WinForms.HTButton();
          this.custOutDir = new System.Windows.Forms.TextBox();
          this.outFolderLoc = new System.Windows.Forms.ComboBox();
@@ -61,6 +62,11 @@
          this.maxVidHeight = new System.Windows.Forms.ComboBox();
          this.label31 = new System.Windows.Forms.Label();
          this.tabListPage2 = new Cyotek.Windows.Forms.TabListPage();
+         this.depanningMaxConsecutive = new System.Windows.Forms.NumericUpDown();
+         this.label38 = new System.Windows.Forms.Label();
+         this.label23 = new System.Windows.Forms.Label();
+         this.depanningThresh = new System.Windows.Forms.NumericUpDown();
+         this.depanning = new System.Windows.Forms.CheckBox();
          this.label11 = new System.Windows.Forms.Label();
          this.autoEncBlockPanel = new System.Windows.Forms.Panel();
          this.label70 = new System.Windows.Forms.Label();
@@ -181,17 +187,13 @@
          this.titleLabel = new System.Windows.Forms.Label();
          this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
          this.resetBtn = new HTAlt.WinForms.HTButton();
-         this.depanning = new System.Windows.Forms.CheckBox();
-         this.depanningThresh = new System.Windows.Forms.NumericUpDown();
-         this.label23 = new System.Windows.Forms.Label();
-         this.label37 = new System.Windows.Forms.Label();
-         this.depanningPixelDepth = new System.Windows.Forms.NumericUpDown();
-         this.label38 = new System.Windows.Forms.Label();
-         this.depanningMaxConsecutive = new System.Windows.Forms.NumericUpDown();
+         this.depanningVerHor = new System.Windows.Forms.CheckBox();
          this.settingsTabList.SuspendLayout();
          this.generalTab.SuspendLayout();
          ((System.ComponentModel.ISupportInitialize)(this.info1)).BeginInit();
          this.tabListPage2.SuspendLayout();
+         ((System.ComponentModel.ISupportInitialize)(this.depanningMaxConsecutive)).BeginInit();
+         ((System.ComponentModel.ISupportInitialize)(this.depanningThresh)).BeginInit();
          ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).BeginInit();
          ((System.ComponentModel.ISupportInitialize)(this.scnDetectValue)).BeginInit();
          this.mpDedupePanel.SuspendLayout();
@@ -205,9 +207,6 @@
          ((System.ComponentModel.ISupportInitialize)(this.vp9Crf)).BeginInit();
          ((System.ComponentModel.ISupportInitialize)(this.mp4Crf)).BeginInit();
          this.debugTab.SuspendLayout();
-         ((System.ComponentModel.ISupportInitialize)(this.depanningThresh)).BeginInit();
-         ((System.ComponentModel.ISupportInitialize)(this.depanningPixelDepth)).BeginInit();
-         ((System.ComponentModel.ISupportInitialize)(this.depanningMaxConsecutive)).BeginInit();
          this.SuspendLayout();
          // 
          // settingsTabList
@@ -231,6 +230,7 @@
          // generalTab
          // 
          this.generalTab.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(48)))), ((int)(((byte)(48)))), ((int)(((byte)(48)))));
+         this.generalTab.Controls.Add(this.pauseBeforeInterpolation);
          this.generalTab.Controls.Add(this.custOutDirBrowseBtn);
          this.generalTab.Controls.Add(this.custOutDir);
          this.generalTab.Controls.Add(this.outFolderLoc);
@@ -261,8 +261,18 @@
          this.generalTab.Controls.Add(this.label31);
          this.generalTab.ForeColor = System.Drawing.Color.White;
          this.generalTab.Name = "generalTab";
-         this.generalTab.Size = new System.Drawing.Size(762, 522);
+         this.generalTab.Size = new System.Drawing.Size(762, 449);
          this.generalTab.Text = "Application";
+         // 
+         // pauseBeforeInterpolation
+         // 
+         this.pauseBeforeInterpolation.AutoSize = true;
+         this.pauseBeforeInterpolation.Location = new System.Drawing.Point(599, 9);
+         this.pauseBeforeInterpolation.Name = "pauseBeforeInterpolation";
+         this.pauseBeforeInterpolation.Size = new System.Drawing.Size(149, 17);
+         this.pauseBeforeInterpolation.TabIndex = 94;
+         this.pauseBeforeInterpolation.Text = "Pause before interpolation";
+         this.pauseBeforeInterpolation.UseVisualStyleBackColor = true;
          // 
          // custOutDirBrowseBtn
          // 
@@ -592,10 +602,9 @@
          // tabListPage2
          // 
          this.tabListPage2.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(48)))), ((int)(((byte)(48)))), ((int)(((byte)(48)))));
+         this.tabListPage2.Controls.Add(this.depanningVerHor);
          this.tabListPage2.Controls.Add(this.depanningMaxConsecutive);
          this.tabListPage2.Controls.Add(this.label38);
-         this.tabListPage2.Controls.Add(this.depanningPixelDepth);
-         this.tabListPage2.Controls.Add(this.label37);
          this.tabListPage2.Controls.Add(this.label23);
          this.tabListPage2.Controls.Add(this.depanningThresh);
          this.tabListPage2.Controls.Add(this.depanning);
@@ -643,6 +652,84 @@
          this.tabListPage2.Name = "tabListPage2";
          this.tabListPage2.Size = new System.Drawing.Size(762, 449);
          this.tabListPage2.Text = "Interpolation";
+         // 
+         // depanningMaxConsecutive
+         // 
+         this.depanningMaxConsecutive.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
+         this.depanningMaxConsecutive.ForeColor = System.Drawing.Color.White;
+         this.depanningMaxConsecutive.Location = new System.Drawing.Point(523, 207);
+         this.depanningMaxConsecutive.Minimum = new decimal(new int[] {
+            1,
+            0,
+            0,
+            0});
+         this.depanningMaxConsecutive.Name = "depanningMaxConsecutive";
+         this.depanningMaxConsecutive.Size = new System.Drawing.Size(47, 20);
+         this.depanningMaxConsecutive.TabIndex = 102;
+         this.depanningMaxConsecutive.Value = new decimal(new int[] {
+            2,
+            0,
+            0,
+            0});
+         // 
+         // label38
+         // 
+         this.label38.AutoSize = true;
+         this.label38.Location = new System.Drawing.Point(445, 210);
+         this.label38.Margin = new System.Windows.Forms.Padding(3);
+         this.label38.Name = "label38";
+         this.label38.Size = new System.Drawing.Size(72, 13);
+         this.label38.TabIndex = 101;
+         this.label38.Text = "Max Consec.:";
+         // 
+         // label23
+         // 
+         this.label23.AutoSize = true;
+         this.label23.Location = new System.Drawing.Point(301, 210);
+         this.label23.Margin = new System.Windows.Forms.Padding(3);
+         this.label23.Name = "label23";
+         this.label23.Size = new System.Drawing.Size(57, 13);
+         this.label23.TabIndex = 98;
+         this.label23.Text = "Threshold:";
+         // 
+         // depanningThresh
+         // 
+         this.depanningThresh.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
+         this.depanningThresh.DecimalPlaces = 2;
+         this.depanningThresh.ForeColor = System.Drawing.Color.White;
+         this.depanningThresh.Increment = new decimal(new int[] {
+            5,
+            0,
+            0,
+            131072});
+         this.depanningThresh.Location = new System.Drawing.Point(367, 208);
+         this.depanningThresh.Maximum = new decimal(new int[] {
+            5,
+            0,
+            0,
+            0});
+         this.depanningThresh.Minimum = new decimal(new int[] {
+            5,
+            0,
+            0,
+            131072});
+         this.depanningThresh.Name = "depanningThresh";
+         this.depanningThresh.Size = new System.Drawing.Size(62, 20);
+         this.depanningThresh.TabIndex = 97;
+         this.depanningThresh.Value = new decimal(new int[] {
+            2,
+            0,
+            0,
+            0});
+         // 
+         // depanning
+         // 
+         this.depanning.AutoSize = true;
+         this.depanning.Location = new System.Drawing.Point(280, 210);
+         this.depanning.Name = "depanning";
+         this.depanning.Size = new System.Drawing.Size(15, 14);
+         this.depanning.TabIndex = 96;
+         this.depanning.UseVisualStyleBackColor = true;
          // 
          // label11
          // 
@@ -869,10 +956,10 @@
             131072});
          this.scnDetectValue.Location = new System.Drawing.Point(364, 268);
          this.scnDetectValue.Maximum = new decimal(new int[] {
-            5,
+            1,
             0,
             0,
-            65536});
+            0});
          this.scnDetectValue.Minimum = new decimal(new int[] {
             5,
             0,
@@ -1174,7 +1261,7 @@
          this.aiOptsPage.Controls.Add(this.label32);
          this.aiOptsPage.ForeColor = System.Drawing.Color.White;
          this.aiOptsPage.Name = "aiOptsPage";
-         this.aiOptsPage.Size = new System.Drawing.Size(762, 419);
+         this.aiOptsPage.Size = new System.Drawing.Size(762, 449);
          this.aiOptsPage.Text = "AI Specific Options";
          // 
          // label66
@@ -1476,7 +1563,7 @@
          this.vidExportTab.Controls.Add(this.label8);
          this.vidExportTab.ForeColor = System.Drawing.Color.White;
          this.vidExportTab.Name = "vidExportTab";
-         this.vidExportTab.Size = new System.Drawing.Size(762, 419);
+         this.vidExportTab.Size = new System.Drawing.Size(762, 449);
          this.vidExportTab.Text = "Export Options";
          // 
          // label73
@@ -1668,7 +1755,7 @@
          this.tabListPage1.Controls.Add(this.label10);
          this.tabListPage1.ForeColor = System.Drawing.Color.White;
          this.tabListPage1.Name = "tabListPage1";
-         this.tabListPage1.Size = new System.Drawing.Size(762, 419);
+         this.tabListPage1.Size = new System.Drawing.Size(762, 449);
          this.tabListPage1.Text = "Encoding Settings";
          // 
          // imgSeqQuality
@@ -2169,117 +2256,15 @@
          this.resetBtn.UseVisualStyleBackColor = false;
          this.resetBtn.Click += new System.EventHandler(this.resetBtn_Click);
          // 
-         // depanning
+         // depanningVerHor
          // 
-         this.depanning.AutoSize = true;
-         this.depanning.Location = new System.Drawing.Point(280, 210);
-         this.depanning.Name = "depanning";
-         this.depanning.Size = new System.Drawing.Size(15, 14);
-         this.depanning.TabIndex = 96;
-         this.depanning.UseVisualStyleBackColor = true;
-         // 
-         // depanningThresh
-         // 
-         this.depanningThresh.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
-         this.depanningThresh.DecimalPlaces = 2;
-         this.depanningThresh.ForeColor = System.Drawing.Color.White;
-         this.depanningThresh.Increment = new decimal(new int[] {
-            5,
-            0,
-            0,
-            131072});
-         this.depanningThresh.Location = new System.Drawing.Point(367, 208);
-         this.depanningThresh.Maximum = new decimal(new int[] {
-            5,
-            0,
-            0,
-            0});
-         this.depanningThresh.Minimum = new decimal(new int[] {
-            5,
-            0,
-            0,
-            131072});
-         this.depanningThresh.Name = "depanningThresh";
-         this.depanningThresh.Size = new System.Drawing.Size(100, 20);
-         this.depanningThresh.TabIndex = 97;
-         this.depanningThresh.Value = new decimal(new int[] {
-            2,
-            0,
-            0,
-            0});
-         // 
-         // label23
-         // 
-         this.label23.AutoSize = true;
-         this.label23.Location = new System.Drawing.Point(301, 210);
-         this.label23.Margin = new System.Windows.Forms.Padding(3);
-         this.label23.Name = "label23";
-         this.label23.Size = new System.Drawing.Size(57, 13);
-         this.label23.TabIndex = 98;
-         this.label23.Text = "Threshold:";
-         // 
-         // label37
-         // 
-         this.label37.AutoSize = true;
-         this.label37.Location = new System.Drawing.Point(473, 210);
-         this.label37.Margin = new System.Windows.Forms.Padding(3);
-         this.label37.Name = "label37";
-         this.label37.Size = new System.Drawing.Size(39, 13);
-         this.label37.TabIndex = 99;
-         this.label37.Text = "Depth:";
-         // 
-         // depanningPixelDepth
-         // 
-         this.depanningPixelDepth.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
-         this.depanningPixelDepth.ForeColor = System.Drawing.Color.White;
-         this.depanningPixelDepth.Location = new System.Drawing.Point(518, 208);
-         this.depanningPixelDepth.Maximum = new decimal(new int[] {
-            50,
-            0,
-            0,
-            0});
-         this.depanningPixelDepth.Minimum = new decimal(new int[] {
-            2,
-            0,
-            0,
-            0});
-         this.depanningPixelDepth.Name = "depanningPixelDepth";
-         this.depanningPixelDepth.Size = new System.Drawing.Size(47, 20);
-         this.depanningPixelDepth.TabIndex = 100;
-         this.depanningPixelDepth.Value = new decimal(new int[] {
-            20,
-            0,
-            0,
-            0});
-         // 
-         // label38
-         // 
-         this.label38.AutoSize = true;
-         this.label38.Location = new System.Drawing.Point(571, 211);
-         this.label38.Margin = new System.Windows.Forms.Padding(3);
-         this.label38.Name = "label38";
-         this.label38.Size = new System.Drawing.Size(72, 13);
-         this.label38.TabIndex = 101;
-         this.label38.Text = "Max Consec.:";
-         // 
-         // depanningMaxConsecutive
-         // 
-         this.depanningMaxConsecutive.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
-         this.depanningMaxConsecutive.ForeColor = System.Drawing.Color.White;
-         this.depanningMaxConsecutive.Location = new System.Drawing.Point(649, 208);
-         this.depanningMaxConsecutive.Minimum = new decimal(new int[] {
-            1,
-            0,
-            0,
-            0});
-         this.depanningMaxConsecutive.Name = "depanningMaxConsecutive";
-         this.depanningMaxConsecutive.Size = new System.Drawing.Size(47, 20);
-         this.depanningMaxConsecutive.TabIndex = 102;
-         this.depanningMaxConsecutive.Value = new decimal(new int[] {
-            2,
-            0,
-            0,
-            0});
+         this.depanningVerHor.AutoSize = true;
+         this.depanningVerHor.Location = new System.Drawing.Point(598, 209);
+         this.depanningVerHor.Name = "depanningVerHor";
+         this.depanningVerHor.Size = new System.Drawing.Size(133, 17);
+         this.depanningVerHor.TabIndex = 103;
+         this.depanningVerHor.Text = "Ver+Hor (CPU Heavy!)";
+         this.depanningVerHor.UseVisualStyleBackColor = true;
          // 
          // SettingsForm
          // 
@@ -2304,6 +2289,8 @@
          ((System.ComponentModel.ISupportInitialize)(this.info1)).EndInit();
          this.tabListPage2.ResumeLayout(false);
          this.tabListPage2.PerformLayout();
+         ((System.ComponentModel.ISupportInitialize)(this.depanningMaxConsecutive)).EndInit();
+         ((System.ComponentModel.ISupportInitialize)(this.depanningThresh)).EndInit();
          ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).EndInit();
          ((System.ComponentModel.ISupportInitialize)(this.scnDetectValue)).EndInit();
          this.mpDedupePanel.ResumeLayout(false);
@@ -2321,9 +2308,6 @@
          ((System.ComponentModel.ISupportInitialize)(this.mp4Crf)).EndInit();
          this.debugTab.ResumeLayout(false);
          this.debugTab.PerformLayout();
-         ((System.ComponentModel.ISupportInitialize)(this.depanningThresh)).EndInit();
-         ((System.ComponentModel.ISupportInitialize)(this.depanningPixelDepth)).EndInit();
-         ((System.ComponentModel.ISupportInitialize)(this.depanningMaxConsecutive)).EndInit();
          this.ResumeLayout(false);
          this.PerformLayout();
 
@@ -2485,9 +2469,9 @@
         private System.Windows.Forms.Label label23;
         private System.Windows.Forms.NumericUpDown depanningThresh;
         private System.Windows.Forms.CheckBox depanning;
-        private System.Windows.Forms.NumericUpDown depanningPixelDepth;
-        private System.Windows.Forms.Label label37;
         private System.Windows.Forms.Label label38;
         private System.Windows.Forms.NumericUpDown depanningMaxConsecutive;
+        private System.Windows.Forms.CheckBox pauseBeforeInterpolation;
+        private System.Windows.Forms.CheckBox depanningVerHor;
     }
 }

@@ -18,15 +18,15 @@ namespace Flowframes.Magick.Panning
         public PanningRemovalContext(
             string[] frames, 
             int maxPanningFramesToRemove,
-            int pixelDepth,
             double threshold,
-            int maxCachedImages)
+            int maxCachedImages,
+            bool allowVerHor)
         {
             Frames = frames;
             MaxPanningFramesToRemove = maxPanningFramesToRemove;
-            PixelDepth = pixelDepth;
             Threshold = threshold;
             MaxCachedImages = maxCachedImages;
+            AllowVerHor = allowVerHor;
         }
 
         public ConcurrentDictionary<ImagePanningCacheResult, bool> CachedPanningResults { get; } = new ConcurrentDictionary<ImagePanningCacheResult, bool>();
@@ -39,11 +39,11 @@ namespace Flowframes.Magick.Panning
 
         public int MaxPanningFramesToRemove { get; }
 
-        public int PixelDepth { get; }
-
         public double Threshold { get; }
 
         public int MaxCachedImages { get; }
+
+        public bool AllowVerHor { get; }
 
         public void ReportProgress(int framesHandled)
         {

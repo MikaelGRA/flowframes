@@ -54,6 +54,12 @@ namespace Flowframes
                 await PostProcessFrames(false);
             }
 
+            var pause = Config.GetBool(Config.Key.pauseBeforeInterpolation);
+            if( pause )
+            {
+                UiUtils.ShowMessageBox("Modify frames/scenes manually!", "Flowframes", MessageBoxButtons.OK);
+            }
+
             if (canceled) return;
             bool skip = await AutoEncodeResume.PrepareResumedRun();
             if (skip || canceled) return;

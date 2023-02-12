@@ -84,6 +84,7 @@ namespace Flowframes.Forms
 
             // General
             ConfigParser.SaveComboxIndex(processingMode);
+            ConfigParser.SaveGuiElement(pauseBeforeInterpolation);
             ConfigParser.SaveGuiElement(maxVidHeight, ConfigParser.StringMode.Int);
             ConfigParser.SaveComboxIndex(tempFolderLoc);
             ConfigParser.SaveComboxIndex(outFolderLoc);
@@ -110,8 +111,8 @@ namespace Flowframes.Forms
             ConfigParser.SaveGuiElement(alwaysWaitForAutoEnc);
             ConfigParser.SaveGuiElement(depanningThresh);
             ConfigParser.SaveGuiElement(depanning);
-            ConfigParser.SaveGuiElement(depanningPixelDepth);
             ConfigParser.SaveGuiElement(depanningMaxConsecutive);
+            ConfigParser.SaveGuiElement(depanningVerHor);
             // AI
             ConfigParser.SaveGuiElement(torchGpus);
             ConfigParser.SaveGuiElement(ncnnGpus);
@@ -147,6 +148,7 @@ namespace Flowframes.Forms
         {
             // General
             ConfigParser.LoadComboxIndex(processingMode);
+            ConfigParser.LoadGuiElement(pauseBeforeInterpolation);
             ConfigParser.LoadGuiElement(maxVidHeight);
             ConfigParser.LoadComboxIndex(tempFolderLoc); ConfigParser.LoadGuiElement(tempDirCustom);
             ConfigParser.LoadComboxIndex(outFolderLoc); ConfigParser.LoadGuiElement(custOutDir);
@@ -173,8 +175,8 @@ namespace Flowframes.Forms
             ConfigParser.LoadGuiElement(alwaysWaitForAutoEnc);
             ConfigParser.LoadGuiElement(depanningThresh);
             ConfigParser.LoadGuiElement(depanning);
-            ConfigParser.LoadGuiElement(depanningPixelDepth);
             ConfigParser.LoadGuiElement(depanningMaxConsecutive);
+            ConfigParser.LoadGuiElement(depanningVerHor);
             // AI
             ConfigParser.LoadGuiElement(torchGpus);
             ConfigParser.LoadGuiElement(ncnnGpus);

@@ -3,7 +3,7 @@
     public enum LinearPanningCheckResult
     {
         Match,
-        CheckOtherDirection,
+        PerformHorVerCheck,
         Mismatch,
     }
 }

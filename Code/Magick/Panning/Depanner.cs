@@ -27,15 +27,15 @@ namespace Flowframes.Magick.Panning
         public static async Task RemoveDupeFrames(string path, string ext)
         {
             var threshold = Config.GetFloat(Config.Key.depanningThresh);
-            int pixelDepth = Config.GetInt(Config.Key.depanningPixelDepth);
-            int maxPanningFrames = Config.GetInt(Config.Key.depanningMaxConsecutive);
+            var maxPanningFrames = Config.GetInt(Config.Key.depanningMaxConsecutive);
+            var allowVerHor = Config.GetBool(Config.Key.depanningVerHor);
 
             Stopwatch sw = new Stopwatch();
             sw.Restart();
             Logger.Log("Removing panning frames - Threshold: " + threshold.ToString("0.00"));
 
             var files = IoUtils.GetFileInfosSorted(path, false, "*." + ext).Select(x => x.FullName).ToList();
-            var context = new PanningRemovalContext(files.ToArray(), maxPanningFrames, pixelDepth, threshold, 100);
+            var context = new PanningRemovalContext(files.ToArray(), maxPanningFrames, threshold, 100, allowVerHor);
 
             context.Progress += pct =>
             {

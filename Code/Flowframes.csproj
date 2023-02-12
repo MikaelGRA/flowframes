@@ -419,6 +419,7 @@
     <Compile Include="Magick\Panning\MagickImageWithPath.cs" />
     <Compile Include="Magick\Panning\PanningFrameLocator.cs" />
     <Compile Include="Magick\Panning\PanningRemovalContext.cs" />
+    <Compile Include="Magick\Panning\ShiftCompareResult.cs" />
     <Compile Include="Magick\SceneDetect.cs" />
     <Compile Include="Main\AiModels.cs" />
     <Compile Include="Main\AutoEncode.cs" />
