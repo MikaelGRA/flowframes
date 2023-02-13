@@ -1,5 +1,8 @@
-﻿namespace Flowframes.Magick.Panning
+﻿using System.Globalization;
+
+namespace Flowframes.Magick.Panning
 {
+
     public class FrameInfo
     {
         private int _priorDuplicateFrames = -1;
@@ -7,9 +10,12 @@
         public FrameInfo(string frame)
         {
             Path = frame;
+            FrameNumber = int.Parse(System.IO.Path.GetFileNameWithoutExtension(frame), CultureInfo.InvariantCulture);
         }
 
         public string Path { get; }
+
+        public int FrameNumber { get; }
 
         public int GetPriorDuplicateFrames()
         {

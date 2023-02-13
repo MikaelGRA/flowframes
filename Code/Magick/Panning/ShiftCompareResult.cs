@@ -1,18 +1,16 @@
 ﻿namespace Flowframes.Magick.Panning
 {
+
     public struct ShiftCompareResult
     {
-        public ShiftCompareResult(double fullMatch, double offsetMatch, bool hasOffsetMatch)
+        public ShiftCompareResult(double fullMatch, double offsetMatch)
         {
             FullMatch = fullMatch;
             OffsetMatch = offsetMatch;
-            HasOffsetMatch = hasOffsetMatch;
         }
 
         public double FullMatch { get; }
 
         public double OffsetMatch { get; }
-
-        public bool HasOffsetMatch { get; }
     }
 }

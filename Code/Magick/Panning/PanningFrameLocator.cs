@@ -108,6 +108,7 @@ namespace Flowframes.Magick.Panning
                 try
                 {
                     var frame = frames[ i ];
+
                     //if( context.UnremovableImages.ContainsKey( frame.Path ) )
                     //{
                     //   img1 = null;
@@ -159,6 +160,7 @@ namespace Flowframes.Magick.Panning
                     if ( nextIndex < frames.Length )
                     {
                         var nextFrame = frames[ nextIndex ];
+                        var dupOffset = nextFrame.FrameNumber - frame.FrameNumber - 1;
 
                         var img2 = context.GetOrCreateImage(nextFrame.Path);
 
@@ -173,7 +175,7 @@ namespace Flowframes.Magick.Panning
                         {
                             if ( isPanning )
                             {
-                                if ( priorDuplicatesForNextFrame <= maxPanningFramesToRemove )
+                                if ( priorDuplicatesForNextFrame + dupOffset <= maxPanningFramesToRemove )
                                 {
                                     imagesToRemove.Add(nextFrame.Path);
                                 }
@@ -346,24 +348,39 @@ namespace Flowframes.Magick.Panning
                 //sImg2.Write( "sharedArea2.jpg" );
 
                 var diff = sImg1.Compare(sImg2, ErrorMetric.Fuzz) * 100;
+                //if( diff < threshold && xOffset == 0 && yOffset == 0 )
+                //{
+                //   // try with other offsets as well?
+
+                //   var fileName = Path.GetFileName( img2.FileName );
+                //   sImg2.Write( Path.Combine( "phash", fileName ) );
+                //   Console.WriteLine( "0 OFFSET MATCH: " + fileName );
+
+                //   // Never match, ever!
+                //   //return new ShiftCompareResult( diff, subImgDiff, false );
+                //}
+
                 if ( diff < threshold * 3 && diff > threshold && ( xOffset != 0 || yOffset != 0 ) ) // TOVERIFY: Might cause more trouble?
                 {
                     // Use NCC and/or SSIM
                     var ncc = sImg1.Compare(sImg2, ErrorMetric.NormalizedCrossCorrelation) * 100;
                     if ( ncc > 98.5 )
                     {
-                        //var fileName = Path.GetFileName( img2.FileName );
-                        //sImg2.Write( Path.Combine( "phash", fileName ) );
-                        //Console.WriteLine( "MATCH BY NCC: " + ncc );
+                        //if( xOffset == 0 && yOffset == 0 )
+                        //{
+                        //   var fileName = Path.GetFileName( img2.FileName );
+                        //   sImg2.Write( Path.Combine( "phash", fileName ) );
+                        //   Console.WriteLine( "0 OFFSET MATCH: " + fileName );
+                        //}
 
-                        return new ShiftCompareResult(0.1, subImgDiff, xOffset != 0 || yOffset != 0);
+                        return new ShiftCompareResult(0.1, subImgDiff);
                     }
                 }
 
-                return new ShiftCompareResult(diff, subImgDiff, xOffset != 0 || yOffset != 0);
+                return new ShiftCompareResult(diff, subImgDiff);
             }
 
-            return new ShiftCompareResult(10000d, subImgDiff, false);
+            return new ShiftCompareResult(10000d, subImgDiff);
         }
 
         static LinearPanningCheckResult IsPanningSingleDirection(IMagickImage<byte> img1, IMagickImage<byte> img2, double threshold)
@@ -394,12 +411,6 @@ namespace Flowframes.Magick.Panning
             {
                 return LinearPanningCheckResult.Match;
             }
-            else if ( !horizontalResult.HasOffsetMatch ) // if we could NOT find
-            {
-                //// try again?
-                //Console.WriteLine("NO OFFSET MATCH!");
-
-            }
 
             var verticalBarWidth = thickness;
             var verticalBarHeight = height;
@@ -415,12 +426,6 @@ namespace Flowframes.Magick.Panning
             if ( verticalResult.FullMatch < threshold )
             {
                 return LinearPanningCheckResult.Match;
-            }
-            else if ( !verticalResult.HasOffsetMatch ) // if we could NOT find
-            {
-                //// try again?
-                //Console.WriteLine( "NO OFFSET MATCH!" );
-
             }
 
             var checkAgain = threshold * 4;
