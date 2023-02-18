@@ -254,6 +254,7 @@ namespace Flowframes.IO
             if (key == Key.depanningMaxConsecutive)return WriteDefault(key, "4");
             if (key == Key.depanningVerHor)       return WriteDefault(key, "True");
             if (key == Key.dedupThresh)           return WriteDefault(key, "2");
+            if (key == Key.dedupMaxConsecutive)   return WriteDefault(key, "5");
             if (key == Key.keepAudio)             return WriteDefault(key, "True");
             if (key == Key.keepSubs)              return WriteDefault(key, "True");
             if (key == Key.keepMeta)              return WriteDefault(key, "True");
@@ -391,7 +392,8 @@ namespace Flowframes.IO
             depanning,
             depanningMaxConsecutive,
             depanningVerHor,
-            pauseBeforeInterpolation
+            pauseBeforeInterpolation,
+            dedupMaxConsecutive
         }
     }
 }

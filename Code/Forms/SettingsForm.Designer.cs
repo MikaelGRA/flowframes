@@ -62,8 +62,9 @@
          this.maxVidHeight = new System.Windows.Forms.ComboBox();
          this.label31 = new System.Windows.Forms.Label();
          this.tabListPage2 = new Cyotek.Windows.Forms.TabListPage();
+         this.depanningVerHor = new System.Windows.Forms.CheckBox();
          this.depanningMaxConsecutive = new System.Windows.Forms.NumericUpDown();
-         this.label38 = new System.Windows.Forms.Label();
+         this.maxConsecDepanLabel = new System.Windows.Forms.Label();
          this.label23 = new System.Windows.Forms.Label();
          this.depanningThresh = new System.Windows.Forms.NumericUpDown();
          this.depanning = new System.Windows.Forms.CheckBox();
@@ -187,7 +188,8 @@
          this.titleLabel = new System.Windows.Forms.Label();
          this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
          this.resetBtn = new HTAlt.WinForms.HTButton();
-         this.depanningVerHor = new System.Windows.Forms.CheckBox();
+         this.maxConsecDedupLabel = new System.Windows.Forms.Label();
+         this.dedupMaxConsecutive = new System.Windows.Forms.NumericUpDown();
          this.settingsTabList.SuspendLayout();
          this.generalTab.SuspendLayout();
          ((System.ComponentModel.ISupportInitialize)(this.info1)).BeginInit();
@@ -207,6 +209,7 @@
          ((System.ComponentModel.ISupportInitialize)(this.vp9Crf)).BeginInit();
          ((System.ComponentModel.ISupportInitialize)(this.mp4Crf)).BeginInit();
          this.debugTab.SuspendLayout();
+         ((System.ComponentModel.ISupportInitialize)(this.dedupMaxConsecutive)).BeginInit();
          this.SuspendLayout();
          // 
          // settingsTabList
@@ -604,7 +607,7 @@
          this.tabListPage2.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(48)))), ((int)(((byte)(48)))), ((int)(((byte)(48)))));
          this.tabListPage2.Controls.Add(this.depanningVerHor);
          this.tabListPage2.Controls.Add(this.depanningMaxConsecutive);
-         this.tabListPage2.Controls.Add(this.label38);
+         this.tabListPage2.Controls.Add(this.maxConsecDepanLabel);
          this.tabListPage2.Controls.Add(this.label23);
          this.tabListPage2.Controls.Add(this.depanningThresh);
          this.tabListPage2.Controls.Add(this.depanning);
@@ -653,18 +656,28 @@
          this.tabListPage2.Size = new System.Drawing.Size(762, 449);
          this.tabListPage2.Text = "Interpolation";
          // 
+         // depanningVerHor
+         // 
+         this.depanningVerHor.AutoSize = true;
+         this.depanningVerHor.Location = new System.Drawing.Point(570, 209);
+         this.depanningVerHor.Name = "depanningVerHor";
+         this.depanningVerHor.Size = new System.Drawing.Size(133, 17);
+         this.depanningVerHor.TabIndex = 103;
+         this.depanningVerHor.Text = "Ver+Hor (CPU Heavy!)";
+         this.depanningVerHor.UseVisualStyleBackColor = true;
+         // 
          // depanningMaxConsecutive
          // 
          this.depanningMaxConsecutive.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
          this.depanningMaxConsecutive.ForeColor = System.Drawing.Color.White;
-         this.depanningMaxConsecutive.Location = new System.Drawing.Point(523, 207);
+         this.depanningMaxConsecutive.Location = new System.Drawing.Point(506, 208);
          this.depanningMaxConsecutive.Minimum = new decimal(new int[] {
             1,
             0,
             0,
             0});
          this.depanningMaxConsecutive.Name = "depanningMaxConsecutive";
-         this.depanningMaxConsecutive.Size = new System.Drawing.Size(47, 20);
+         this.depanningMaxConsecutive.Size = new System.Drawing.Size(40, 20);
          this.depanningMaxConsecutive.TabIndex = 102;
          this.depanningMaxConsecutive.Value = new decimal(new int[] {
             2,
@@ -672,15 +685,15 @@
             0,
             0});
          // 
-         // label38
+         // maxConsecDepanLabel
          // 
-         this.label38.AutoSize = true;
-         this.label38.Location = new System.Drawing.Point(445, 210);
-         this.label38.Margin = new System.Windows.Forms.Padding(3);
-         this.label38.Name = "label38";
-         this.label38.Size = new System.Drawing.Size(72, 13);
-         this.label38.TabIndex = 101;
-         this.label38.Text = "Max Consec.:";
+         this.maxConsecDepanLabel.AutoSize = true;
+         this.maxConsecDepanLabel.Location = new System.Drawing.Point(445, 210);
+         this.maxConsecDepanLabel.Margin = new System.Windows.Forms.Padding(3);
+         this.maxConsecDepanLabel.Name = "maxConsecDepanLabel";
+         this.maxConsecDepanLabel.Size = new System.Drawing.Size(52, 13);
+         this.maxConsecDepanLabel.TabIndex = 101;
+         this.maxConsecDepanLabel.Text = "Max Con:";
          // 
          // label23
          // 
@@ -986,7 +999,7 @@
          // dedupeSensLabel
          // 
          this.dedupeSensLabel.AutoSize = true;
-         this.dedupeSensLabel.Location = new System.Drawing.Point(536, 181);
+         this.dedupeSensLabel.Location = new System.Drawing.Point(482, 180);
          this.dedupeSensLabel.Margin = new System.Windows.Forms.Padding(3);
          this.dedupeSensLabel.Name = "dedupeSensLabel";
          this.dedupeSensLabel.Size = new System.Drawing.Size(57, 13);
@@ -1082,11 +1095,13 @@
          // 
          // mpDedupePanel
          // 
+         this.mpDedupePanel.Controls.Add(this.dedupMaxConsecutive);
+         this.mpDedupePanel.Controls.Add(this.maxConsecDedupLabel);
          this.mpDedupePanel.Controls.Add(this.mpdecimateMode);
-         this.mpDedupePanel.Location = new System.Drawing.Point(599, 177);
+         this.mpDedupePanel.Location = new System.Drawing.Point(542, 177);
          this.mpDedupePanel.Margin = new System.Windows.Forms.Padding(0);
          this.mpDedupePanel.Name = "mpDedupePanel";
-         this.mpDedupePanel.Size = new System.Drawing.Size(135, 21);
+         this.mpDedupePanel.Size = new System.Drawing.Size(209, 21);
          this.mpDedupePanel.TabIndex = 61;
          // 
          // mpdecimateMode
@@ -1102,14 +1117,14 @@
          this.mpdecimateMode.Location = new System.Drawing.Point(0, 0);
          this.mpdecimateMode.Margin = new System.Windows.Forms.Padding(3, 3, 8, 3);
          this.mpdecimateMode.Name = "mpdecimateMode";
-         this.mpdecimateMode.Size = new System.Drawing.Size(135, 21);
+         this.mpdecimateMode.Size = new System.Drawing.Size(103, 21);
          this.mpdecimateMode.TabIndex = 28;
          // 
          // magickDedupePanel
          // 
          this.magickDedupePanel.Controls.Add(this.dedupThresh);
          this.magickDedupePanel.Controls.Add(this.panel3);
-         this.magickDedupePanel.Location = new System.Drawing.Point(599, 177);
+         this.magickDedupePanel.Location = new System.Drawing.Point(542, 177);
          this.magickDedupePanel.Margin = new System.Windows.Forms.Padding(0);
          this.magickDedupePanel.Name = "magickDedupePanel";
          this.magickDedupePanel.Size = new System.Drawing.Size(135, 21);
@@ -1199,7 +1214,7 @@
             "2: During Extraction - Fast, Less Accurate"});
          this.dedupMode.Location = new System.Drawing.Point(280, 177);
          this.dedupMode.Name = "dedupMode";
-         this.dedupMode.Size = new System.Drawing.Size(250, 21);
+         this.dedupMode.Size = new System.Drawing.Size(197, 21);
          this.dedupMode.TabIndex = 27;
          this.dedupMode.SelectedIndexChanged += new System.EventHandler(this.dedupMode_SelectedIndexChanged);
          // 
@@ -2256,15 +2271,33 @@
          this.resetBtn.UseVisualStyleBackColor = false;
          this.resetBtn.Click += new System.EventHandler(this.resetBtn_Click);
          // 
-         // depanningVerHor
+         // maxConsecDedupLabel
          // 
-         this.depanningVerHor.AutoSize = true;
-         this.depanningVerHor.Location = new System.Drawing.Point(598, 209);
-         this.depanningVerHor.Name = "depanningVerHor";
-         this.depanningVerHor.Size = new System.Drawing.Size(133, 17);
-         this.depanningVerHor.TabIndex = 103;
-         this.depanningVerHor.Text = "Ver+Hor (CPU Heavy!)";
-         this.depanningVerHor.UseVisualStyleBackColor = true;
+         this.maxConsecDedupLabel.AutoSize = true;
+         this.maxConsecDedupLabel.Location = new System.Drawing.Point(109, 3);
+         this.maxConsecDedupLabel.Name = "maxConsecDedupLabel";
+         this.maxConsecDedupLabel.Size = new System.Drawing.Size(52, 13);
+         this.maxConsecDedupLabel.TabIndex = 29;
+         this.maxConsecDedupLabel.Text = "Max Con:";
+         // 
+         // dedupMaxConsecutive
+         // 
+         this.dedupMaxConsecutive.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
+         this.dedupMaxConsecutive.ForeColor = System.Drawing.Color.White;
+         this.dedupMaxConsecutive.Location = new System.Drawing.Point(169, 0);
+         this.dedupMaxConsecutive.Minimum = new decimal(new int[] {
+            1,
+            0,
+            0,
+            0});
+         this.dedupMaxConsecutive.Name = "dedupMaxConsecutive";
+         this.dedupMaxConsecutive.Size = new System.Drawing.Size(40, 20);
+         this.dedupMaxConsecutive.TabIndex = 104;
+         this.dedupMaxConsecutive.Value = new decimal(new int[] {
+            4,
+            0,
+            0,
+            0});
          // 
          // SettingsForm
          // 
@@ -2294,6 +2327,7 @@
          ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).EndInit();
          ((System.ComponentModel.ISupportInitialize)(this.scnDetectValue)).EndInit();
          this.mpDedupePanel.ResumeLayout(false);
+         this.mpDedupePanel.PerformLayout();
          this.magickDedupePanel.ResumeLayout(false);
          ((System.ComponentModel.ISupportInitialize)(this.dedupThresh)).EndInit();
          this.aiOptsPage.ResumeLayout(false);
@@ -2308,6 +2342,7 @@
          ((System.ComponentModel.ISupportInitialize)(this.mp4Crf)).EndInit();
          this.debugTab.ResumeLayout(false);
          this.debugTab.PerformLayout();
+         ((System.ComponentModel.ISupportInitialize)(this.dedupMaxConsecutive)).EndInit();
          this.ResumeLayout(false);
          this.PerformLayout();
 
@@ -2469,9 +2504,11 @@
         private System.Windows.Forms.Label label23;
         private System.Windows.Forms.NumericUpDown depanningThresh;
         private System.Windows.Forms.CheckBox depanning;
-        private System.Windows.Forms.Label label38;
+        private System.Windows.Forms.Label maxConsecDepanLabel;
         private System.Windows.Forms.NumericUpDown depanningMaxConsecutive;
         private System.Windows.Forms.CheckBox pauseBeforeInterpolation;
         private System.Windows.Forms.CheckBox depanningVerHor;
+        private System.Windows.Forms.NumericUpDown dedupMaxConsecutive;
+        private System.Windows.Forms.Label maxConsecDedupLabel;
     }
 }

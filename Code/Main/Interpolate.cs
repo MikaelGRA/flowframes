@@ -137,8 +137,9 @@ namespace Flowframes
             Program.mainForm.SetStatus("Extracting frames from video...");
             currentSettings.RefreshExtensions(InterpSettings.FrameType.Import);
             bool mpdecimate = Config.GetInt(Config.Key.dedupMode) == 2;
+            int mpMaxConsecutive = Config.GetInt(Config.Key.dedupMode);
             Size res = await Utils.GetOutputResolution(inPath, true, true);
-            await FfmpegExtract.VideoToFrames(inPath, outPath, alpha, currentSettings.inFpsDetected, mpdecimate, false, res, currentSettings.framesExt);
+            await FfmpegExtract.VideoToFrames(inPath, outPath, alpha, currentSettings.inFpsDetected, mpdecimate, mpMaxConsecutive, false, res, currentSettings.framesExt);
 
             if (mpdecimate)
             {

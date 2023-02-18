@@ -72,14 +72,14 @@ namespace Flowframes.Media
             return args;
         }
 
-        public static async Task VideoToFrames(string inputFile, string framesDir, bool alpha, Fraction rate, bool deDupe, bool delSrc, Size size, string format)
+        public static async Task VideoToFrames(string inputFile, string framesDir, bool alpha, Fraction rate, bool deDupe, int maxConseqDedup, bool delSrc, Size size, string format)
         {
             Logger.Log("Extracting video frames from input video...");
             Logger.Log($"VideoToFrames() - Alpha: {alpha} - Rate: {rate} - Size: {size} - Format: {format}", true, false, "ffmpeg");
             string sizeStr = (size.Width > 1 && size.Height > 1) ? $"-s {size.Width}x{size.Height}" : "";
             IoUtils.CreateDir(framesDir);
             string mpStr = deDupe ? ((Config.GetInt(Config.Key.mpdecimateMode) == 0) ? mpDecDef : mpDecAggr) : "";
-            string filters = FormatUtils.ConcatStrings(new[] { GetPadFilter(), mpStr });
+            string filters = FormatUtils.ConcatStrings(new[] { GetPadFilter(), string.Format( mpStr, maxConseqDedup ) });
             string vf = filters.Length > 2 ? $"-vf {filters}" : "";
             string rateArg = (rate.GetFloat() > 0) ? $" -r {rate}" : "";
             string args = $"{GetTrimArg(true)} -i {inputFile.Wrap()} {GetImgArgs(format, true, alpha)} -vsync 0 {rateArg} -frame_pts 1 {vf} {sizeStr} {GetTrimArg(false)} \"{framesDir}/%{Padding.inputFrames}d{format}\"";
