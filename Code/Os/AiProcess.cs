@@ -141,14 +141,23 @@ namespace Flowframes.Os
                 Program.mainForm.SetStatus("Creating output video from frames...");
             }
 
-            Logger.Log(logStr);
+            if (Interpolate.currentSettings.outSettings.Format != Enums.Output.Format.Realtime)
+                Logger.Log(logStr);
+
             processTime.Stop();
 
             if (!Interpolate.currentSettings.ai.Piped && interpFramesCount < 3)
             {
+                string amount = interpFramesCount > 0 ? $"Only {interpFramesCount}" : "No";
+
+                if (lastLogName.IsEmpty())
+                {
+                    Interpolate.Cancel($"Interpolation failed - {amount} interpolated frames were created, and no log was written.");
+                    return;
+                }
+
                 string[] logLines = File.ReadAllLines(Path.Combine(Paths.GetLogPath(), lastLogName + ".txt"));
                 string log = string.Join("\n", logLines.Reverse().Take(10).Reverse().Select(x => x.Split("]: ").Last()).ToList());
-                string amount = interpFramesCount > 0 ? $"Only {interpFramesCount}" : "No";
                 Interpolate.Cancel($"Interpolation failed - {amount} interpolated frames were created.\n\n\nLast 10 log lines:\n{log}\n\nCheck the log '{lastLogName}' for more details.");
                 return;
             }
@@ -345,7 +354,7 @@ namespace Flowframes.Os
             string ttaStr = Config.GetBool(Config.Key.rifeNcnnUseTta, false) ? "-x" : "";
 
             rifeNcnn.StartInfo.Arguments = $"{OsUtils.GetCmdArg()} cd /D {Path.Combine(Paths.GetPkgPath(), Implementations.rifeNcnn.PkgDir).Wrap()} & rife-ncnn-vulkan.exe " +
-                $" -v -i {inPath.Wrap()} -o {outPath.Wrap()} {frames} -m {mdl.ToLowerInvariant()} {ttaStr} {uhdStr} -g {Config.Get(Config.Key.ncnnGpus)} -f {NcnnUtils.GetNcnnPattern()} -j {NcnnUtils.GetNcnnThreads()}";
+                $" -v -i {inPath.Wrap()} -o {outPath.Wrap()} {frames} -m {mdl.ToLowerInvariant()} {ttaStr} {uhdStr} -g {Config.Get(Config.Key.ncnnGpus)} -f {NcnnUtils.GetNcnnPattern()} -j {NcnnUtils.GetNcnnThreads(Implementations.rifeNcnn)}";
 
             Logger.Log("cmd.exe " + rifeNcnn.StartInfo.Arguments, true);
 
@@ -368,7 +377,7 @@ namespace Flowframes.Os
 
         public static async Task RunRifeNcnnVs(string framesPath, string outPath, float factor, string mdl, bool rt = false)
         {
-            if(Interpolate.canceled) return;
+            if (Interpolate.canceled) return;
 
             AI ai = Implementations.rifeNcnnVs;
             processTimeMulti.Restart();
@@ -393,13 +402,8 @@ namespace Flowframes.Os
         {
             IoUtils.CreateDir(outPath);
             Process rifeNcnnVs = OsUtils.NewProcess(!OsUtils.ShowHiddenCmd());
-
-            Logger.Log($"Note: RIFE-NCNN-VS is experimental and may not work as expected with certain Flowframes features, such as image sequence exporting.");
-
             string avDir = Path.Combine(Paths.GetPkgPath(), Paths.audioVideoDir);
-            
             string pipedTargetArgs = $"{Path.Combine(avDir, "ffmpeg").Wrap()} -y {await Export.GetPipedFfmpegCmd(rt)}";
-
             string pkgDir = Path.Combine(Paths.GetPkgPath(), Implementations.rifeNcnnVs.PkgDir);
             int gpuId = Config.Get(Config.Key.ncnnGpus).Split(',')[0].GetInt();
 
@@ -422,7 +426,7 @@ namespace Flowframes.Os
 
             if (rt)
             {
-                Logger.Log($"Starting. Use Space to pause, Left Arrow and Right Arrow to seek, albeit seeking takes some time.");
+                Logger.Log($"Starting. Use Space to pause, Left Arrow and Right Arrow to seek, though seeking can be slow.");
                 AiStartedRt(rifeNcnnVs, inPath);
             }
             else
@@ -605,7 +609,7 @@ namespace Flowframes.Os
             string ttaStr = ""; // Config.GetBool(Config.Key.rifeNcnnUseTta, false) ? "-x" : "";
 
             ifrnetNcnn.StartInfo.Arguments = $"{OsUtils.GetCmdArg()} cd /D {Path.Combine(Paths.GetPkgPath(), Implementations.ifrnetNcnn.PkgDir).Wrap()} & ifrnet-ncnn-vulkan.exe " +
-                $" -v -i {inPath.Wrap()} -o {outPath.Wrap()} -m {mdl} {ttaStr} {uhdStr} -g {Config.Get(Config.Key.ncnnGpus)} -f {NcnnUtils.GetNcnnPattern()} -j {NcnnUtils.GetNcnnThreads()}";
+                $" -v -i {inPath.Wrap()} -o {outPath.Wrap()} -m {mdl} {ttaStr} {uhdStr} -g {Config.Get(Config.Key.ncnnGpus)} -f {NcnnUtils.GetNcnnPattern()} -j {NcnnUtils.GetNcnnThreads(Implementations.ifrnetNcnn)}";
 
             Logger.Log("cmd.exe " + ifrnetNcnn.StartInfo.Arguments, true);
 
@@ -714,7 +718,7 @@ namespace Flowframes.Os
 
             if (ai.Piped) // VS specific
             {
-                if (!hasShownError && Interpolate.currentSettings.outMode != Interpolate.OutMode.Realtime && line.ToLowerInvariant().Contains("fwrite() call failed"))
+                if (!hasShownError && Interpolate.currentSettings.outSettings.Format != Enums.Output.Format.Realtime && line.ToLowerInvariant().Contains("fwrite() call failed"))
                 {
                     string lastLogLines = string.Join("\n", Logger.GetSessionLogLastLines(lastLogName, 6).Select(x => $"[{x.Split("]: [").Skip(1).FirstOrDefault()}"));
 
@@ -753,6 +757,6 @@ namespace Flowframes.Os
             InterpolationProgress.UpdateLastFrameFromInterpOutput(line);
         }
 
-        
+
     }
 }

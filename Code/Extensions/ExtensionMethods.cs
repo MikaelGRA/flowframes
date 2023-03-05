@@ -10,6 +10,7 @@ using System.Windows.Forms;
 using Flowframes.Data;
 using System.Management.Automation;
 using System.Drawing;
+using Flowframes.MiscUtils;
 
 namespace Flowframes
 {
@@ -270,6 +271,128 @@ namespace Flowframes
         public static string GetFfmpegInputArg(this string filePath)
         {
             return $"{(filePath.IsConcatFile() ? filePath.GetConcStr() : "")} -i {filePath.Wrap()}";
+        }
+
+        public static string Get(this Dictionary<string, string> dict, string key, bool returnKeyInsteadOfEmptyString = false, bool ignoreCase = false)
+        {
+            if (key == null)
+                key = "";
+
+            for (int i = 0; i < dict.Count; i++)
+            {
+                if (ignoreCase)
+                {
+                    if (key.Lower() == dict.ElementAt(i).Key.Lower())
+                        return dict.ElementAt(i).Value;
+                }
+                else
+                {
+                    if (key == dict.ElementAt(i).Key)
+                        return dict.ElementAt(i).Value;
+                }
+            }
+
+            if (returnKeyInsteadOfEmptyString)
+                return key;
+            else
+                return "";
+        }
+
+        public static void FillFromEnum<TEnum>(this ComboBox comboBox, Dictionary<string, string> stringMap = null, int defaultIndex = -1, List<TEnum> exclusionList = null) where TEnum : Enum
+        {
+            if (exclusionList == null)
+                exclusionList = new List<TEnum>();
+
+            var entriesToAdd = Enum.GetValues(typeof(TEnum)).Cast<TEnum>().Except(exclusionList);
+            var strings = entriesToAdd.Select(x => stringMap.Get(x.ToString(), true));
+            comboBox.FillFromEnum(strings, stringMap, defaultIndex);
+        }
+
+        public static void FillFromEnum<TEnum>(this ComboBox comboBox, IEnumerable<TEnum> entries, Dictionary<string, string> stringMap = null, int defaultIndex = -1) where TEnum : Enum
+        {
+            var strings = entries.Select(x => stringMap.Get(x.ToString(), true));
+            comboBox.FillFromEnum(strings, stringMap, defaultIndex);
+        }
+
+        public static void FillFromEnum<TEnum>(this ComboBox comboBox, IEnumerable<TEnum> entries, Dictionary<string, string> stringMap, TEnum defaultEntry) where TEnum : Enum
+        {
+            if (stringMap == null)
+                stringMap = new Dictionary<string, string>();
+
+            comboBox.Items.Clear();
+            comboBox.Items.AddRange(entries.Select(x => stringMap.Get(x.ToString(), true)).ToArray());
+            comboBox.Text = stringMap.Get(defaultEntry.ToString(), true);
+        }
+
+        public static void FillFromEnum(this ComboBox comboBox, IEnumerable<string> entries, Dictionary<string, string> stringMap = null, int defaultIndex = -1)
+        {
+            if (stringMap == null)
+                stringMap = new Dictionary<string, string>();
+
+            comboBox.Items.Clear();
+            comboBox.Items.AddRange(entries.Select(x => stringMap.Get(x, true)).ToArray());
+
+            if (defaultIndex >= 0 && comboBox.Items.Count > 0)
+                comboBox.SelectedIndex = defaultIndex;
+        }
+
+        public static void SetIfTextMatches(this ComboBox comboBox, string str, bool ignoreCase = true, Dictionary<string, string> stringMap = null)
+        {
+            if (stringMap == null)
+                stringMap = new Dictionary<string, string>();
+
+            str = stringMap.Get(str, true, true);
+
+            for (int i = 0; i < comboBox.Items.Count; i++)
+            {
+                if (ignoreCase)
+                {
+                    if (comboBox.Items[i].ToString().Lower() == str.Lower())
+                    {
+                        comboBox.SelectedIndex = i;
+                        return;
+                    }
+                }
+                else
+                {
+                    if (comboBox.Items[i].ToString() == str)
+                    {
+                        comboBox.SelectedIndex = i;
+                        return;
+                    }
+                }
+            }
+        }
+
+        public static string Lower(this string s)
+        {
+            if (s == null)
+                return s;
+
+            return s.ToLowerInvariant();
+        }
+
+        public static string Upper(this string s)
+        {
+            if (s == null)
+                return s;
+
+            return s.ToUpperInvariant();
+        }
+
+        public static EncoderInfoVideo GetInfo (this Enums.Encoding.Encoder enc)
+        {
+            return OutputUtils.GetEncoderInfoVideo(enc);
+        }
+
+        public static bool IsEmpty (this string s)
+        {
+            return string.IsNullOrWhiteSpace(s);
+        }
+
+        public static bool NotEmpty(this string s)
+        {
+            return !string.IsNullOrWhiteSpace(s);
         }
     }
 }

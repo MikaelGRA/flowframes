@@ -32,9 +32,9 @@ namespace Flowframes.Forms
             for (int i = 0; i < Program.batchQueue.Count; i++)
             {
                 InterpSettings entry = Program.batchQueue.ElementAt(i);
-                string niceOutMode = entry.outMode.ToString().ToUpper().Remove("VID").Remove("IMG");
-                string str = $"#{i+1}: {Path.GetFileName(entry.inPath).Trunc(40)} - {entry.inFps.GetFloat()} FPS => " +
-                    $"{entry.interpFactor}x {entry.ai.NameShort} ({entry.model.Name}) => {niceOutMode}";
+                string outFormat = Strings.OutputFormat.Get(entry.outSettings.Format.ToString());
+                string inPath = string.IsNullOrWhiteSpace(entry.inPath) ? "No Path" : Path.GetFileName(entry.inPath).Trunc(40);
+                string str = $"#{i+1}: {inPath} - {entry.inFps.GetFloat()} FPS => {entry.interpFactor}x {entry.ai.NameShort} ({entry.model.Name}) => {outFormat}";
                 taskList.Items.Add(str);
             }
         }
@@ -158,6 +158,10 @@ namespace Flowframes.Forms
 
                 current.inFpsDetected = await IoUtils.GetFpsFolderOrVideo(path);
                 current.inFps = current.inFpsDetected;
+
+                if(current.inFps.GetFloat() <= 0)
+                    current.inFps = InterpolateUtils.AskForFramerate(new DirectoryInfo(path).Name, false);
+
                 current.outFps = current.inFps * current.interpFactor;
 
                 Program.batchQueue.Enqueue(current);

@@ -8,6 +8,7 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using static Flowframes.Data.Enums.Encoding;
 using static Flowframes.Media.GetVideoInfo;
 using Stream = Flowframes.Data.Streams.Stream;
 
@@ -29,12 +30,15 @@ namespace Flowframes.Media
             return output.SplitIntoLines().Where(x => x.MatchesWildcard("*Stream #0:*: *: *")).Count();
         }
 
-        public static async Task<List<Stream>> GetStreams(string path, bool progressBar, int streamCount, Fraction defaultFps, bool countFrames)
+        public static async Task<List<Stream>> GetStreams(string path, bool progressBar, int streamCount, Fraction? defaultFps, bool countFrames)
         {
             List<Stream> streamList = new List<Stream>();
 
             try
             {
+                if (defaultFps == null)
+                    defaultFps = new Fraction(30, 1);
+
                 string output = await GetFfmpegInfoAsync(path, "Stream #0:");
                 string[] streams = output.SplitIntoLines().Where(x => x.MatchesWildcard("*Stream #0:*: *: *")).ToArray();
 
@@ -59,7 +63,7 @@ namespace Flowframes.Media
                             Size res = await GetMediaResolutionCached.GetSizeAsync(path);
                             Size sar = SizeFromString(await GetFfprobeInfoAsync(path, showStreams, "sample_aspect_ratio", idx));
                             Size dar = SizeFromString(await GetFfprobeInfoAsync(path, showStreams, "display_aspect_ratio", idx));
-                            Fraction fps = path.IsConcatFile() ? defaultFps : await IoUtils.GetVideoFramerate(path);
+                            Fraction fps = path.IsConcatFile() ? (Fraction)defaultFps : await IoUtils.GetVideoFramerate(path);
                             int frameCount = countFrames ? await GetFrameCountCached.GetFrameCountAsync(path) : 0;
                             VideoStream vStream = new VideoStream(lang, title, codec, codecLong, pixFmt, kbits, res, sar, dar, fps, frameCount);
                             vStream.Index = idx;
@@ -170,127 +174,117 @@ namespace Flowframes.Media
             return false;
         }
 
-        public enum Codec { H264, H265, H264Nvenc, H265Nvenc, Av1, Vp9, ProRes, AviRaw, Gif }
-
-        public static Codec GetCodec(Interpolate.OutMode mode)
+        public static string[] GetEncArgs(OutputSettings settings, Size res, float fps, bool realtime = false) // Array contains as many entries as there are encoding passes. If "realtime" is true, force single pass.
         {
-            if (mode == Interpolate.OutMode.VidMp4 || mode == Interpolate.OutMode.VidMkv)
-            {
-                int mp4MkvEnc = Config.GetInt(Config.Key.mp4Enc);
-                if (mp4MkvEnc == 0) return Codec.H264;
-                if (mp4MkvEnc == 1) return Codec.H265;
-                if (mp4MkvEnc == 2) return Codec.H264Nvenc;
-                if (mp4MkvEnc == 3) return Codec.H265Nvenc;
-                if (mp4MkvEnc == 4) return Codec.Av1;
-            }
-
-            if (mode == Interpolate.OutMode.VidWebm)
-                return Codec.Vp9;
-
-            if (mode == Interpolate.OutMode.VidProRes)
-                return Codec.ProRes;
-
-            if (mode == Interpolate.OutMode.VidAvi)
-                return Codec.AviRaw;
-
-            if (mode == Interpolate.OutMode.VidGif)
-                return Codec.Gif;
-
-            return Codec.H264;
-        }
-
-        public static string GetEnc(Codec codec)
-        {
-            switch (codec)
-            {
-                case Codec.H264: return "libx264";
-                case Codec.H265: return "libx265";
-                case Codec.H264Nvenc: return "h264_nvenc";
-                case Codec.H265Nvenc: return "hevc_nvenc";
-                case Codec.Av1: return "libsvtav1";
-                case Codec.Vp9: return "libvpx-vp9";
-                case Codec.ProRes: return "prores_ks";
-                case Codec.AviRaw: return Config.Get(Config.Key.aviCodec);
-                case Codec.Gif: return "gif";
-            }
-
-            return "libx264";
-        }
-
-        public static string[] GetEncArgs(Codec codec, Size res, float fps, bool realtime = false) // Array contains as many entries as there are encoding passes. If "realtime" is true, force single pass.
-        {
+            Encoder enc = settings.Encoder;
             int keyint = 10;
+            var args = new List<string>();
+            EncoderInfoVideo info = OutputUtils.GetEncoderInfoVideo(enc);
+            PixelFormat pixFmt = settings.PixelFormat;
 
-            if (codec == Codec.H264)
+            if (settings.Format == Enums.Output.Format.Realtime)
+                pixFmt = PixelFormat.Yuv444P;
+
+            if (pixFmt == (PixelFormat)(-1)) // No pixel format set in GUI
+                pixFmt = info.PixelFormatDefault != (PixelFormat)(-1) ? info.PixelFormatDefault : info.PixelFormats.First(); // Set default or fallback to first in list
+
+            args.Add($"-c:v {info.Name}");
+
+            if (enc == Encoder.X264 || enc == Encoder.X265 || enc == Encoder.SvtAv1 || enc == Encoder.VpxVp9 || enc == Encoder.Nvenc264 || enc == Encoder.Nvenc265 || enc == Encoder.NvencAv1)
+                args.Add(GetKeyIntArg(fps, keyint));
+
+            if (pixFmt != (PixelFormat)(-1))
+                args.Add($"-pix_fmt {pixFmt.ToString().Lower()}");
+
+            if (enc == Encoder.X264)
             {
-                string preset = Config.Get(Config.Key.ffEncPreset).ToLowerInvariant().Remove(" ");
-                string g = GetKeyIntArg(fps, keyint);
-                return new string[] { $"-c:v {GetEnc(codec)} -crf {Config.GetInt(Config.Key.h264Crf)} -preset {preset} {g} -pix_fmt {GetPixFmt()}" };
+                string preset = Config.Get(Config.Key.ffEncPreset).ToLowerInvariant().Remove(" "); // TODO: Replace this ugly stuff with enums
+                int crf = GetCrf(settings);
+                args.Add($"-crf {crf} -preset {preset}");
             }
 
-            if (codec == Codec.H265)
+            if (enc == Encoder.X265)
             {
-                string preset = Config.Get(Config.Key.ffEncPreset).ToLowerInvariant().Remove(" ");
-                int crf = Config.GetInt(Config.Key.h265Crf);
-                string g = GetKeyIntArg(fps, keyint);
-                return new string[] { $"-c:v {GetEnc(codec)} {(crf > 0 ? $"-crf {crf}" : "-x265-params lossless=1")} -preset {preset} {g} -pix_fmt {GetPixFmt()}" };
+                string preset = Config.Get(Config.Key.ffEncPreset).ToLowerInvariant().Remove(" "); // TODO: Replace this ugly stuff with enums
+                int crf = GetCrf(settings);
+                args.Add($"{(crf > 0 ? $"-crf {crf}" : "-x265-params lossless=1")} -preset {preset}");
             }
 
-            if (codec == Codec.H264Nvenc)
+            if (enc == Encoder.SvtAv1)
             {
-                int cq = (Config.GetInt(Config.Key.h264Crf) * 1.1f).RoundToInt();
-                return new string[] { $"-c:v {GetEnc(codec)} -b:v 0 {(cq > 0 ? $"-cq {cq} -preset p7" : "-preset lossless")} -pix_fmt {GetPixFmt()}" };
+                int crf = GetCrf(settings);
+                args.Add($"-crf {crf} {GetSvtAv1Speed()} -svtav1-params enable-qm=1:enable-overlays=1:enable-tf=0:scd=0");
             }
 
-            if (codec == Codec.H265Nvenc)
+            if (enc == Encoder.VpxVp9)
             {
-                int cq = (Config.GetInt(Config.Key.h265Crf) * 1.1f).RoundToInt();
-                return new string[] { $"-c:v {GetEnc(codec)} -b:v 0 {(cq > 0 ? $"-cq {cq} -preset p7" : "-preset lossless")} -pix_fmt {GetPixFmt()}" };
-            }
-
-            if (codec == Codec.Av1)
-            {
-                int cq = Config.GetInt(Config.Key.av1Crf);
-                string g = GetKeyIntArg(fps, keyint);
-                return new string[] { $"-c:v {GetEnc(codec)} -b:v 0 -qp {cq} {GetSvtAv1Speed()} {g} -svtav1-params enable-overlays=0:enable-tf=0:scd=0 -pix_fmt {GetPixFmt()}" };
-            }
-
-            if (codec == Codec.Vp9)
-            {
-                int crf = Config.GetInt(Config.Key.vp9Crf);
+                int crf = GetCrf(settings);
                 string qualityStr = (crf > 0) ? $"-crf {crf}" : "-lossless 1";
-                string g = GetKeyIntArg(fps, keyint);
                 string t = GetTilingArgs(res, "-tile-columns ", "-tile-rows ");
 
                 if (realtime) // Force 1-pass
                 {
-                    return new string[] { $"-c:v {GetEnc(codec)} -b:v 0 {qualityStr} {GetVp9Speed()} {t} -row-mt 1 {g} -pix_fmt {GetPixFmt()}" };
+                    args.Add($"-b:v 0 {qualityStr} {GetVp9Speed()} {t} -row-mt 1");
                 }
                 else
                 {
-                    return new string[] { 
-                        $"-c:v {GetEnc(codec)} -b:v 0 {qualityStr} {GetVp9Speed()} {t} -row-mt 1 {g} -pass 1 -pix_fmt {GetPixFmt()} -an", 
-                        $"-c:v {GetEnc(codec)} -b:v 0 {qualityStr} {GetVp9Speed()} {t} -row-mt 1 {g} -pass 2 -pix_fmt {GetPixFmt()}"
+                    return new string[] {
+                        $"{string.Join(" ", args)} -b:v 0 {qualityStr} {GetVp9Speed()} {t} -row-mt 1 -pass 1 -an",
+                        $"{string.Join(" ", args)} -b:v 0 {qualityStr} {GetVp9Speed()} {t} -row-mt 1 -pass 2"
                     };
                 }
             }
 
-            if (codec == Codec.ProRes)
+            if (enc == Encoder.Nvenc264)
             {
-                return new string[] { $"-c:v {GetEnc(codec)} -profile:v {Config.GetInt(Config.Key.proResProfile)} -pix_fmt {GetPixFmt()}" };
+                int crf = GetCrf(settings);
+                args.Add($"-b:v 0 {(crf > 0 ? $"-cq {crf} -preset p7" : "-preset lossless")}");
             }
 
-            if (codec == Codec.AviRaw)
+            if (enc == Encoder.Nvenc265)
             {
-                return new string[] { $"-c:v {GetEnc(codec)} -pix_fmt {Config.Get(Config.Key.aviColors)}" };
+                int crf = GetCrf(settings);
+                args.Add($"-b:v 0 {(crf > 0 ? $"-cq {crf} -preset p7" : "-preset lossless")}");
             }
 
-            if (codec == Codec.Gif)
+            if (enc == Encoder.NvencAv1)
             {
-                return new string[] { $"-c:v {GetEnc(codec)} -gifflags -offsetting" };
+                int crf = GetCrf(settings);
+                args.Add($"-b:v 0 -preset p7 {(crf > 0 ? $"-cq {crf}" : "-tune lossless")}"); // Lossless not supported as of Jan 2023!!
             }
 
-            return new string[0];
+            if (enc == Encoder.ProResKs)
+            {
+                var profile = ParseUtils.GetEnum<Quality.ProResProfile>(settings.Quality, true, Strings.VideoQuality);
+                args.Add($"-profile:v {OutputUtils.ProresProfiles[profile]}");
+            }
+
+            if (enc == Encoder.Gif)
+            {
+                args.Add("-gifflags -offsetting");
+            }
+
+            if (enc == Encoder.Jpeg)
+            {
+                var qualityLevel = ParseUtils.GetEnum<Quality.JpegWebm>(settings.Quality, true, Strings.VideoQuality);
+                args.Add($"-q:v {OutputUtils.JpegQuality[qualityLevel]}");
+            }
+
+            if (enc == Encoder.Webp)
+            {
+                var qualityLevel = ParseUtils.GetEnum<Quality.JpegWebm>(settings.Quality, true, Strings.VideoQuality);
+                args.Add($"-q:v {OutputUtils.WebpQuality[qualityLevel]}");
+            }
+
+            return new string[] { string.Join(" ", args) };
+        }
+
+        private static int GetCrf(OutputSettings settings)
+        {
+            if (settings.CustomQuality.NotEmpty())
+                return settings.CustomQuality.GetInt();
+            else
+                return OutputUtils.GetCrf(ParseUtils.GetEnum<Quality.Common>(settings.Quality, true, Strings.VideoQuality), settings.Encoder);
         }
 
         public static string GetTilingArgs(Size resolution, string colArg, string rowArg)
@@ -307,12 +301,12 @@ namespace Flowframes.Media
 
             Logger.Log($"GetTilingArgs: Video resolution is {resolution.Width}x{resolution.Height} - Using 2^{cols} columns, 2^{rows} rows (=> {Math.Pow(2, cols)}x{Math.Pow(2, rows)} = {Math.Pow(2, cols) * Math.Pow(2, rows)} Tiles)", true);
 
-            return $"{(cols > 0 ? colArg+cols : "")} {(rows > 0 ? rowArg + rows : "")}";
+            return $"{(cols > 0 ? colArg + cols : "")} {(rows > 0 ? rowArg + rows : "")}";
         }
 
         public static string GetKeyIntArg(float fps, int intervalSeconds, string arg = "-g ")
         {
-            int keyInt = (fps * intervalSeconds).RoundToInt().Clamp(20, 300);
+            int keyInt = (fps * intervalSeconds).RoundToInt().Clamp(30, 600);
             return $"{arg}{keyInt}";
         }
 
@@ -348,34 +342,21 @@ namespace Flowframes.Media
             return $"-preset {arg}";
         }
 
-        static string GetPixFmt()
-        {
-            switch (Config.GetInt(Config.Key.pixFmt))
-            {
-                case 0: return "yuv420p";
-                case 1: return "yuv444p";
-                case 2: return "yuv420p10le";
-                case 3: return "yuv444p10le";
-            }
-
-            return "yuv420p";
-        }
-
-        public static bool ContainerSupportsAllAudioFormats(Interpolate.OutMode outMode, List<string> codecs)
+        public static bool ContainerSupportsAllAudioFormats(Enums.Output.Format outFormat, List<string> codecs)
         {
             if (codecs.Count < 1)
                 Logger.Log($"Warning: ContainerSupportsAllAudioFormats() was called, but codec list has {codecs.Count} entries.", true, false, "ffmpeg");
 
             foreach (string format in codecs)
             {
-                if (!ContainerSupportsAudioFormat(outMode, format))
+                if (!ContainerSupportsAudioFormat(outFormat, format))
                     return false;
             }
 
             return true;
         }
 
-        public static bool ContainerSupportsAudioFormat(Interpolate.OutMode outMode, string format)
+        public static bool ContainerSupportsAudioFormat(Enums.Output.Format outFormat, string format)
         {
             bool supported = false;
             string alias = GetAudioExt(format);
@@ -383,35 +364,31 @@ namespace Flowframes.Media
             string[] formatsMp4 = new string[] { "m4a", "mp3", "ac3", "dts" };
             string[] formatsMkv = new string[] { "m4a", "mp3", "ac3", "dts", "ogg", "mp2", "wav", "wma" };
             string[] formatsWebm = new string[] { "ogg" };
-            string[] formatsProres = new string[] { "m4a", "ac3", "dts", "wav" };
+            string[] formatsMov = new string[] { "m4a", "ac3", "dts", "wav" };
             string[] formatsAvi = new string[] { "m4a", "ac3", "dts" };
 
-            switch (outMode)
+            switch (outFormat)
             {
-                case Interpolate.OutMode.VidMp4: supported = formatsMp4.Contains(alias); break;
-                case Interpolate.OutMode.VidMkv: supported = formatsMkv.Contains(alias); break;
-                case Interpolate.OutMode.VidWebm: supported = formatsWebm.Contains(alias); break;
-                case Interpolate.OutMode.VidProRes: supported = formatsProres.Contains(alias); break;
-                case Interpolate.OutMode.VidAvi: supported = formatsAvi.Contains(alias); break;
+                case Enums.Output.Format.Mp4: supported = formatsMp4.Contains(alias); break;
+                case Enums.Output.Format.Mkv: supported = formatsMkv.Contains(alias); break;
+                case Enums.Output.Format.Webm: supported = formatsWebm.Contains(alias); break;
+                case Enums.Output.Format.Mov: supported = formatsMov.Contains(alias); break;
+                case Enums.Output.Format.Avi: supported = formatsAvi.Contains(alias); break;
             }
 
-            Logger.Log($"Checking if {outMode} supports audio format '{format}' ({alias}): {supported}", true, false, "ffmpeg");
+            Logger.Log($"Checking if {outFormat} supports audio format '{format}' ({alias}): {supported}", true, false, "ffmpeg");
             return supported;
         }
 
-        public static string GetExt(Interpolate.OutMode outMode, bool dot = true)
+        public static string GetExt(OutputSettings settings, bool dot = true)
         {
             string ext = dot ? "." : "";
+            EncoderInfoVideo info = settings.Encoder.GetInfo();
 
-            switch (outMode)
-            {
-                case Interpolate.OutMode.VidMp4: ext += "mp4"; break;
-                case Interpolate.OutMode.VidMkv: ext += "mkv"; break;
-                case Interpolate.OutMode.VidWebm: ext += "webm"; break;
-                case Interpolate.OutMode.VidProRes: ext += "mov"; break;
-                case Interpolate.OutMode.VidAvi: ext += "avi"; break;
-                case Interpolate.OutMode.VidGif: ext += "gif"; break;
-            }
+            if (string.IsNullOrWhiteSpace(info.OverideExtension))
+                ext += settings.Format.ToString().Lower();
+            else
+                ext += info.OverideExtension;
 
             return ext;
         }
@@ -440,7 +417,7 @@ namespace Flowframes.Media
             return "unsupported";
         }
 
-        public static async Task<string> GetAudioFallbackArgs(string videoPath, Interpolate.OutMode outMode, float itsScale)
+        public static async Task<string> GetAudioFallbackArgs(string videoPath, Enums.Output.Format outFormat, float itsScale)
         {
             bool opusMp4 = Config.GetBool(Config.Key.allowOpusInMp4);
             int opusBr = Config.GetInt(Config.Key.opusBitrate, 128);
@@ -448,7 +425,7 @@ namespace Flowframes.Media
             int ac = (await GetVideoInfo.GetFfprobeInfoAsync(videoPath, GetVideoInfo.FfprobeMode.ShowStreams, "channels", 0)).GetInt();
             string af = GetAudioFilters(itsScale);
 
-            if (outMode == Interpolate.OutMode.VidMkv || outMode == Interpolate.OutMode.VidWebm || (outMode == Interpolate.OutMode.VidMp4 && opusMp4))
+            if (outFormat == Enums.Output.Format.Mkv || outFormat == Enums.Output.Format.Webm || (outFormat == Enums.Output.Format.Mp4 && opusMp4))
                 return $"-c:a libopus -b:a {(ac > 4 ? $"{opusBr * 2}" : $"{opusBr}")}k -ac {(ac > 0 ? $"{ac}" : "2")} {af}"; // Double bitrate if 5ch or more, ignore ac if <= 0
             else
                 return $"-c:a aac -b:a {(ac > 4 ? $"{aacBr * 2}" : $"{aacBr}")}k -aac_coder twoloop -ac {(ac > 0 ? $"{ac}" : "2")} {af}";
@@ -495,25 +472,14 @@ namespace Flowframes.Media
                 return 0;
 
             Directory.CreateDirectory(outputPath.GetParentDir());
-
-            if (validExtensions == null)
-                validExtensions = new List<string>();
-
-            validExtensions = validExtensions.Select(x => x.Remove(".").ToLowerInvariant()).ToList(); // Ignore "." in extensions
-            string concatFileContent = "";
-            string[] files = IoUtils.GetFilesSorted(inputFilesDir);
-            int fileCount = 0;
-
+            validExtensions = validExtensions ?? new List<string>();
+            validExtensions = validExtensions.Select(x => x.Remove(".").Lower()).ToList(); // Ignore "." in extensions
+            var validFiles = IoUtils.GetFilesSorted(inputFilesDir).Where(f => validExtensions.Contains(Path.GetExtension(f).Replace(".", "").Lower()));
+            string fileContent = string.Join(Environment.NewLine, validFiles.Select(f => $"file '{f.Replace(@"\", "/")}'"));
             IoUtils.TryDeleteIfExists(outputPath);
-            StreamWriter concatFile = new StreamWriter(outputPath, append: true);
+            File.WriteAllText(outputPath, fileContent);
 
-            foreach (string file in files.Where(x => validExtensions.Contains(Path.GetExtension(x).Replace(".", "").ToLower())))
-            {
-                fileCount++;
-                concatFile.WriteLine($"file '{file.Replace(@"\", "/")}'\n");
-            }
-
-            return fileCount;
+            return validFiles.Count();
         }
 
         public static Size SizeFromString(string str, char delimiter = ':')

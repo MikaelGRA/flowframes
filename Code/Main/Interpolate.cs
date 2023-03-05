@@ -23,8 +23,6 @@ namespace Flowframes
 {
     public class Interpolate
     {
-        public enum OutMode { VidMp4, VidMkv, VidWebm, VidProRes, VidAvi, VidGif, ImgPng, Realtime }
-
         public static bool currentlyUsingAutoEnc;
         public static InterpSettings currentSettings;
         public static MediaFile currentMediaFile;
@@ -41,7 +39,7 @@ namespace Flowframes
             if (!Utils.CheckPathValid(currentSettings.inPath)) return;           // Check if input path/file is valid
             if (!Utils.CheckAiAvailable(currentSettings.ai, currentSettings.model)) return;            // Check if selected AI pkg is installed
             if (!AutoEncodeResume.resumeNextRun && !Utils.CheckDeleteOldTempFolder()) return;      // Try to delete temp folder if an old one exists
-            if (!(await Utils.CheckEncoderValid(currentSettings.outFps.GetFloat()))) return;           // Check encoder compat
+            if (!(await Utils.CheckEncoderValid())) return;           // Check encoder compat
             Utils.ShowWarnings(currentSettings.interpFactor, currentSettings.ai);
             currentSettings.stepByStep = false;
             Program.mainForm.SetStatus("Starting...");
@@ -70,9 +68,14 @@ namespace Flowframes
             if (!currentlyUsingAutoEnc)
             {
                 if (currentSettings.ai.Piped)
-                    await Export.MuxPipedVideo(currentSettings.inPath, currentSettings.FullOutPath);
+                {
+                    if(!currentSettings.outSettings.Encoder.GetInfo().IsImageSequence)
+                        await Export.MuxPipedVideo(currentSettings.inPath, currentSettings.FullOutPath);
+                }
                 else
-                    await Export.ExportFrames(currentSettings.interpFolder, currentSettings.outPath, currentSettings.outMode, false);
+                {
+                    await Export.ExportFrames(currentSettings.interpFolder, currentSettings.outPath, currentSettings.outSettings, false);
+                }
             }
 
             if (!AutoEncodeResume.resumeNextRun && Config.GetBool(Config.Key.keepTempFolder) && IoUtils.GetAmountOfFiles(currentSettings.framesFolder, false) > 0)
@@ -110,7 +113,9 @@ namespace Flowframes
 
             if (canceled) return;
 
+            Program.mainForm.SetStatus("Running real-time interpolation...");
             await AiProcess.RunRifeNcnnVs(currentSettings.framesFolder, "", currentSettings.interpFactor, currentSettings.model.Dir, true);
+            Program.mainForm.SetStatus("Ready");
             Program.mainForm.SetWorking(false);
         }
 
@@ -224,7 +229,6 @@ namespace Flowframes
             if (canceled) return;
 
             currentlyUsingAutoEnc = Utils.CanUseAutoEnc(stepByStep, currentSettings);
-
             IoUtils.CreateDir(outpath);
 
             List<Task> tasks = new List<Task>();
@@ -288,7 +292,7 @@ namespace Flowframes
 
             AutoEncode.busy = false;
             Program.mainForm.SetWorking(false);
-            Program.mainForm.SetTab("interpolation");
+            Program.mainForm.SetTab(Program.mainForm.interpOptsTab.Name);
             Logger.LogIfLastLineDoesNotContainMsg("Canceled interpolation.");
 
             if (!string.IsNullOrWhiteSpace(reason) && !noMsgBox)

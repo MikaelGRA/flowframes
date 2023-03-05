@@ -52,6 +52,9 @@ namespace Flowframes.IO
 
 		public static string[] ReadLines(string path)
 		{
+			if (!File.Exists(path))
+				return new string[0];
+
 			List<string> lines = new List<string>();
 			using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, 0x1000, FileOptions.SequentialScan))
 			
@@ -206,6 +209,9 @@ namespace Flowframes.IO
         {
             try
             {
+				if (!Directory.Exists(path))
+					return 0;
+
                 DirectoryInfo d = new DirectoryInfo(path);
 				FileInfo[] files = null;
 
@@ -386,13 +392,17 @@ namespace Flowframes.IO
 
 			try
 			{
-				size = FfmpegCommands.GetSize(path);
+				if (path.IsConcatFile())
+                    path = ReadFileFirstLine(path).Split('\'')[1].Split('\'')[0];
+
+                size = FfmpegCommands.GetSize(path);
 				Logger.Log($"Detected video size of {Path.GetFileName(path)} as {size.Width}x{size.Height}", true);
 			}
-			catch
+			catch (Exception ex)
 			{
 				Logger.Log("Failed to read video size!");
-			}
+				Logger.Log(ex.ToString(), true);
+            }
 
 			return size;
 		}
@@ -490,24 +500,33 @@ namespace Flowframes.IO
 		/// <summary>
 		/// Add ".old" suffix to an existing file to avoid it getting overwritten. If one already exists, it will be ".old.old" etc.
 		/// </summary>
-		public static void RenameExistingFile(string path)
+		public static void RenameExistingFileOrDir(string path)
 		{
-			if (!File.Exists(path))
-				return;
-
             try
             {
-				string ext = Path.GetExtension(path);
-				string renamedPath = path;
+                if (File.Exists(path))
+                {
+                    string ext = Path.GetExtension(path);
+                    string renamedPath = path;
 
-				while (File.Exists(renamedPath))
-					renamedPath = Path.ChangeExtension(renamedPath, null) + ".old" + ext;
+                    while (File.Exists(renamedPath))
+                        renamedPath = Path.ChangeExtension(renamedPath, null) + ".old" + ext;
 
-				File.Move(path, renamedPath);
+                    File.Move(path, renamedPath);
+                }
+                else if (Directory.Exists(path))
+				{
+                    string renamedPath = path;
+
+                    while (Directory.Exists(renamedPath))
+                        renamedPath = renamedPath + ".old";
+
+                    Directory.Move(path, renamedPath);
+                }
 			}
 			catch(Exception e)
             {
-				Logger.Log($"RenameExistingFile: Failed to rename '{path}': {e.Message}", true);
+				Logger.Log($"RenameExistingFileOrDir: Failed to rename '{path}': {e.Message}", true);
 			}
 		}
 
@@ -565,10 +584,7 @@ namespace Flowframes.IO
 			Fraction maxFps = max.Contains("/") ? new Fraction(max) : new Fraction(max.GetFloat());
 			float fps = fpsLimit ? maxFps.GetFloat() : curr.outFps.GetFloat();
 
-            if (curr.outMode == Interpolate.OutMode.VidGif && fps > 50f)
-                fps = 50f;
-
-            Size outRes = await InterpolateUtils.GetOutputResolution(curr.inPath, false, false);
+            Size outRes = await InterpolateUtils.GetOutputResolution(curr.inPath, true);
 			string pattern = Config.Get(Config.Key.exportNamePattern);
 			string inName = Interpolate.currentSettings.inputIsFrames ? Path.GetFileName(curr.inPath) : Path.GetFileNameWithoutExtension(curr.inPath);
             bool encodeBoth = Config.GetInt(Config.Key.maxFpsMode) == 0;
@@ -580,7 +596,7 @@ namespace Flowframes.IO
             filename = filename.Replace("[FACTOR]", curr.interpFactor.ToStringDot());
 			filename = filename.Replace("[AI]", curr.ai.NameShort.ToUpper());
 			filename = filename.Replace("[MODEL]", curr.model.Name.Remove(" "));
-			filename = filename.Replace("[FPS]", fps.ToStringDot());
+			filename = filename.Replace("[FPS]", fps.ToStringDot("0.###"));
             filename = filename.Replace("[ROUNDFPS]", fps.RoundToInt().ToString());
 			filename = filename.Replace("[RES]", $"{outRes.Width}x{outRes.Height}");
 			filename = filename.Replace("[H]", $"{outRes.Height}p");
@@ -589,7 +605,7 @@ namespace Flowframes.IO
 				filename += Paths.fpsLimitSuffix;
 
 			if (withExt)
-				filename += FfmpegUtils.GetExt(curr.outMode);
+				filename += FfmpegUtils.GetExt(curr.outSettings);
 
 			return filename;
 		}
@@ -889,7 +905,20 @@ namespace Flowframes.IO
 			return size;
 		}
 
-		public static long GetFilesize(string path)
+        public static long GetPathSize(string path)
+        {
+            try
+            {
+				bool isFile = File.Exists(path);
+                return isFile ? GetFilesize(path) : GetDirSize(path, true);
+            }
+            catch
+            {
+                return -1;
+            }
+        }
+
+        public static long GetFilesize(string path)
 		{
             try
             {
@@ -957,5 +986,32 @@ namespace Flowframes.IO
 			List<string> exts = fileInfos.Select(x => x.Extension).ToList();
 			return exts.Select(x => x).Distinct().ToArray();
 		}
-	}
+
+		public static string ReadFile(string path)
+		{
+            using (var fileStream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+            {
+                using (var streamReader = new StreamReader(fileStream))
+                {
+                    return streamReader.ReadToEnd();
+                }
+            }
+        }
+
+        public static string[] ReadFileLines(string path)
+        {
+            return ReadFile(path).SplitIntoLines();
+        }
+
+        public static string ReadFileFirstLine(string path)
+        {
+            using (var fileStream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+            {
+                using (var streamReader = new StreamReader(fileStream))
+                {
+                    return streamReader.ReadLine();
+                }
+            }
+        }
+    }
 }

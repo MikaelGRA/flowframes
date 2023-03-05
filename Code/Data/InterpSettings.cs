@@ -25,7 +25,7 @@ namespace Flowframes
         public Fraction outFps;
         public float outItsScale;
         public float interpFactor;
-        public Interpolate.OutMode outMode;
+        public OutputSettings outSettings;
         public ModelCollection.ModelInfo model;
 
         public string tempFolder;
@@ -35,8 +35,8 @@ namespace Flowframes
 
         private Size _inputResolution;
         public Size InputResolution { get { RefreshInputRes(); return _inputResolution; } }
-        private Size _scaledResolution;
-        public Size ScaledResolution { get { RefreshOutputRes(); return _scaledResolution; } }
+        public Size ScaledResolution { get { return InterpolateUtils.GetOutputResolution(InputResolution, false); } }
+        public Size ScaledPaddedResolution { get { return InterpolateUtils.GetOutputResolution(InputResolution, true); } }
 
         public bool alpha;
         public bool stepByStep;
@@ -46,7 +46,7 @@ namespace Flowframes
 
         public InterpSettings() { }
 
-        public InterpSettings(string inPathArg, string outPathArg, AI aiArg, Fraction inFpsDetectedArg, Fraction inFpsArg, float interpFactorArg, float itsScale, Interpolate.OutMode outModeArg, ModelCollection.ModelInfo modelArg)
+        public InterpSettings(string inPathArg, string outPathArg, AI aiArg, Fraction inFpsDetectedArg, Fraction inFpsArg, float interpFactorArg, float itsScale, OutputSettings outSettingsArg, ModelCollection.ModelInfo modelArg)
         {
             inPath = inPathArg;
             outPath = outPathArg;
@@ -56,7 +56,7 @@ namespace Flowframes
             interpFactor = interpFactorArg;
             outFps = inFpsArg * (double)interpFactorArg;
             outItsScale = itsScale;
-            outMode = outModeArg;
+            outSettings = outSettingsArg;
             model = modelArg;
 
             alpha = false;
@@ -82,7 +82,6 @@ namespace Flowframes
             }
 
             _inputResolution = new Size(0, 0);
-            _scaledResolution = new Size(0, 0);
 
             RefreshExtensions();
         }
@@ -96,12 +95,11 @@ namespace Flowframes
             inFps = new Fraction();
             interpFactor = 0;
             outFps = new Fraction();
-            outMode = Interpolate.OutMode.VidMp4;
+            outSettings = new OutputSettings();
             model = null;
             alpha = false;
             stepByStep = false;
             _inputResolution = new Size(0, 0);
-            _scaledResolution = new Size(0, 0);
             framesExt = "";
             interpExt = "";
 
@@ -114,6 +112,7 @@ namespace Flowframes
                 entries.Add(keyValuePair[0], keyValuePair[1]);
             }
 
+            // TODO: Rework this ugly stuff, JSON?
             foreach (KeyValuePair<string, string> entry in entries)
             {
                 switch (entry.Key)
@@ -125,10 +124,9 @@ namespace Flowframes
                     case "INFPS": inFps = new Fraction(entry.Value); break;
                     case "OUTFPS": outFps = new Fraction(entry.Value); break;
                     case "INTERPFACTOR": interpFactor = float.Parse(entry.Value); break;
-                    case "OUTMODE": outMode = (Interpolate.OutMode)Enum.Parse(typeof(Interpolate.OutMode), entry.Value); break;
+                    case "OUTMODE": outSettings.Format = (Enums.Output.Format)Enum.Parse(typeof(Enums.Output.Format), entry.Value); break;
                     case "MODEL": model = AiModels.GetModelByName(ai, entry.Value); break;
                     case "INPUTRES": _inputResolution = FormatUtils.ParseSize(entry.Value); break;
-                    case "OUTPUTRES": _scaledResolution = FormatUtils.ParseSize(entry.Value); break;
                     case "ALPHA": alpha = bool.Parse(entry.Value); break;
                     case "STEPBYSTEP": stepByStep = bool.Parse(entry.Value); break;
                     case "FRAMESEXT": framesExt = entry.Value; break;
@@ -171,25 +169,18 @@ namespace Flowframes
                 _inputResolution = await GetMediaResolutionCached.GetSizeAsync(inPath);
         }
 
-        void RefreshOutputRes ()
-        {
-            if (_scaledResolution.IsEmpty)
-                _scaledResolution = InterpolateUtils.GetOutputResolution(InputResolution, false, true);
-        }
-
         public void RefreshAlpha ()
         {
             try
             {
                 bool alphaModel = model.SupportsAlpha;
-                bool png = outMode == Interpolate.OutMode.ImgPng;
-                bool gif = outMode == Interpolate.OutMode.VidGif;
-                bool proResAlpha = outMode == Interpolate.OutMode.VidProRes && Config.GetInt(Config.Key.proResProfile) > 3;
-                bool outputSupportsAlpha = png || gif || proResAlpha;
+                bool pngOutput = outSettings.Encoder == Enums.Encoding.Encoder.Png;
+                bool gifOutput = outSettings.Encoder == Enums.Encoding.Encoder.Gif;
+                bool proResAlpha = outSettings.Encoder == Enums.Encoding.Encoder.ProResKs && OutputUtils.AlphaFormats.Contains(outSettings.PixelFormat);
+                bool outputSupportsAlpha = pngOutput || gifOutput || proResAlpha;
                 string ext = inputIsFrames ? Path.GetExtension(IoUtils.GetFilesSorted(inPath).First()).ToLowerInvariant() : Path.GetExtension(inPath).ToLowerInvariant();
                 alpha = (alphaModel && outputSupportsAlpha && (ext == ".gif" || ext == ".png" || ext == ".apng" || ext == ".mov"));
-                Logger.Log($"RefreshAlpha: model.supportsAlpha = {alphaModel} - outputSupportsAlpha = {outputSupportsAlpha} - " +
-                           $"input ext: {ext} => alpha = {alpha}", true);
+                Logger.Log($"RefreshAlpha: model.supportsAlpha = {alphaModel} - outputSupportsAlpha = {outputSupportsAlpha} - input ext: {ext} => alpha = {alpha}", true);
             }
             catch (Exception e)
             {
@@ -202,9 +193,9 @@ namespace Flowframes
 
         public void RefreshExtensions(FrameType type = FrameType.Both)
         {
-            bool pngOutput = outMode == Interpolate.OutMode.ImgPng;
-            bool aviHqChroma = outMode == Interpolate.OutMode.VidAvi && Config.Get(Config.Key.aviColors) != "yuv420p";
-            bool proresHqChroma = outMode == Interpolate.OutMode.VidProRes && Config.GetInt(Config.Key.proResProfile) > 3;
+            bool pngOutput = outSettings.Encoder == Enums.Encoding.Encoder.Png;
+            bool aviHqChroma = outSettings.Format == Enums.Output.Format.Avi && OutputUtils.AlphaFormats.Contains(outSettings.PixelFormat);
+            bool proresHqChroma = outSettings.Encoder == Enums.Encoding.Encoder.ProResKs && OutputUtils.AlphaFormats.Contains(outSettings.PixelFormat);
 
             bool forceHqChroma = pngOutput || aviHqChroma || proresHqChroma;
 
@@ -239,7 +230,7 @@ namespace Flowframes
             s += $"INFPS|{inFps}\n";
             s += $"OUTFPS|{outFps}\n";
             s += $"INTERPFACTOR|{interpFactor}\n";
-            s += $"OUTMODE|{outMode}\n";
+            s += $"OUTMODE|{outSettings.Format}\n";
             s += $"MODEL|{model.Name}\n";
             s += $"INPUTRES|{InputResolution.Width}x{InputResolution.Height}\n";
             s += $"OUTPUTRES|{ScaledResolution.Width}x{ScaledResolution.Height}\n";

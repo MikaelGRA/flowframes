@@ -11,7 +11,6 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using static Flowframes.AvProcess;
-using Utils = Flowframes.Media.FfmpegUtils;
 
 namespace Flowframes
 {
@@ -23,15 +22,22 @@ namespace Flowframes
         public static string mpDecDef = "\"mpdecimate=max={0}\"";
         public static string mpDecAggr = "\"mpdecimate=max={0}:hi=64*32:lo=64*32:frac=0.1\"";
 
-        public static int GetPadding ()
+        public static int GetModulo ()
         {
-            return (Interpolate.currentSettings.ai.NameInternal == Implementations.flavrCuda.NameInternal) ? 8 : 2;     // FLAVR input needs to be divisible by 8
+            if (Interpolate.currentSettings.ai.NameInternal == Implementations.flavrCuda.NameInternal)
+                return 8;
+
+            return Interpolate.currentSettings.outSettings.Encoder.GetInfo().Modulo;
         }
 
         public static string GetPadFilter ()
         {
-            int padPixels = GetPadding();
-            return $"pad=width=ceil(iw/{padPixels})*{padPixels}:height=ceil(ih/{padPixels})*{padPixels}:color=black@0";
+            int mod = GetModulo();
+
+            if (mod < 2)
+                return "";
+
+            return $"pad=width=ceil(iw/{mod})*{mod}:height=ceil(ih/{mod})*{mod}:color=black@0";
         }
 
         public static async Task ConcatVideos(string concatFile, string outPath, int looptimes = -1, bool showLog = true)
@@ -41,10 +47,10 @@ namespace Flowframes
             if(showLog)
                 Logger.Log($"Merging videos...", false, Logger.GetLastLine().Contains("frame"));
 
-            IoUtils.RenameExistingFile(outPath);
+            IoUtils.RenameExistingFileOrDir(outPath);
             string loopStr = (looptimes > 0) ? $"-stream_loop {looptimes}" : "";
             string vfrFilename = Path.GetFileName(concatFile);
-            string args = $" {loopStr} -vsync 1 -f concat -i {vfrFilename} -c copy -movflags +faststart -fflags +genpts {outPath.Wrap()}";
+            string args = $" {loopStr} -f concat -i {vfrFilename} -fps_mode cfr -c copy -movflags +faststart -fflags +genpts {outPath.Wrap()}";
             await RunFfmpeg(args, concatFile.GetParentDir(), LogMode.Hidden);
         }
 
@@ -54,7 +60,7 @@ namespace Flowframes
             string ext = Path.GetExtension(inputFile);
             string loopSuffix = Config.Get(Config.Key.exportNamePatternLoop).Replace("[LOOPS]", $"{times}").Replace("[PLAYS]", $"{times + 1}");
             string outpath = $"{pathNoExt}{loopSuffix}{ext}";
-            IoUtils.RenameExistingFile(outpath);
+            IoUtils.RenameExistingFileOrDir(outpath);
             string args = $" -stream_loop {times} -i {inputFile.Wrap()} -c copy {outpath.Wrap()}";
             await RunFfmpeg(args, LogMode.Hidden);
 

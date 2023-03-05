@@ -2,18 +2,14 @@
 using Flowframes.Data;
 using Flowframes.Forms;
 using Flowframes.IO;
-using Flowframes.MiscUtils;
 using Flowframes.Os;
 using Flowframes.Ui;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using System.Windows.Forms;
 using I = Flowframes.Interpolate;
 using Padding = Flowframes.Data.Padding;
 
@@ -27,7 +23,7 @@ namespace Flowframes.Main
 
             try
             {
-                lastFrameNum--;     // We have to do this as extracted frames start at 0, not 1
+                lastFrameNum--; // We have to do this as extracted frames start at 0, not 1
                 bool frameFolderInput = IoUtils.IsPathDirectory(I.currentSettings.inPath);
                 string targetPath = Path.Combine(I.currentSettings.framesFolder, lastFrameNum.ToString().PadLeft(Padding.inputFrames, '0') + I.currentSettings.framesExt);
                 if (File.Exists(targetPath)) return;
@@ -120,25 +116,23 @@ namespace Flowframes.Main
                     passes = false;
                 }
 
-                if (passes && s.outFps.GetFloat() < 1f || s.outFps.GetFloat() > 1000f)
-                {
-                    string imgSeqNote = isFile ? "" : "\n\nWhen using an image sequence as input, you always have to specify the frame rate manually.";
-                    UiUtils.ShowMessageBox($"Invalid output frame rate ({s.outFps.GetFloat()}).\nMust be 1-1000.{imgSeqNote}");
-                    passes = false;
-                }
-
                 string fpsLimitValue = Config.Get(Config.Key.maxFps);
                 float fpsLimit = (fpsLimitValue.Contains("/") ? new Fraction(Config.Get(Config.Key.maxFps)).GetFloat() : fpsLimitValue.GetFloat());
+                int maxFps = s.outSettings.Encoder.GetInfo().MaxFramerate;
 
-                if (s.outMode == I.OutMode.VidGif && s.outFps.GetFloat() > 50 && !(fpsLimit > 0 && fpsLimit <= 50))
-                    Logger.Log($"Warning: GIF will be encoded at 50 FPS instead of {s.outFps.GetFloat()} as the format doesn't support frame rates that high.");
+                if (passes && s.outFps.GetFloat() < 1f || (s.outFps.GetFloat() > maxFps && !(fpsLimit > 0 && fpsLimit <= maxFps)))
+                {
+                    string imgSeqNote = isFile ? "" : "\n\nWhen using an image sequence as input, you always have to specify the frame rate manually.";
+                    UiUtils.ShowMessageBox($"Invalid output frame rate ({s.outFps.GetFloat()}).\nMust be 1-{maxFps}. Either lower the interpolation factor or use the \"Maximum Output Frame Rate\" option.{imgSeqNote}");
+                    passes = false;
+                }
 
                 if (!passes)
                     I.Cancel("Invalid settings detected.", true);
 
                 return passes;
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 Logger.Log($"Failed to run InputIsValid: {e.Message}\n{e.StackTrace}", true);
                 return false;
@@ -186,7 +180,7 @@ namespace Flowframes.Main
             return true;
         }
 
-        public static void ShowWarnings (float factor, AI ai)
+        public static void ShowWarnings(float factor, AI ai)
         {
             if (Config.GetInt(Config.Key.cmdDebugMode) > 0)
                 Logger.Log($"Warning: The CMD window for interpolation is enabled. This will disable Auto-Encode and the progress bar!");
@@ -221,20 +215,9 @@ namespace Flowframes.Main
             return true;
         }
 
-        public static async Task<bool> CheckEncoderValid (float interpFps)
+        public static async Task<bool> CheckEncoderValid()
         {
-            string enc = FfmpegUtils.GetEnc(FfmpegUtils.GetCodec(I.currentSettings.outMode));
-
-            float maxAv1Fps = 240; // SVT-AV1 only supports up to 240 FPS as of 2022-08
-            float maxFps = Config.GetFloat(Config.Key.maxFps);
-            float encodeFps = maxFps > 0 ? interpFps.Clamp(0, maxFps) : interpFps;
-
-            if (enc.ToLowerInvariant().Contains("av1") && encodeFps > maxAv1Fps)
-            {
-                UiUtils.ShowMessageBox($"The selected encoder only supports up to {maxAv1Fps} FPS!\nPlease use a different encoder or reduce the interpolation factor.", UiUtils.MessageType.Error);
-                I.Cancel();
-                return false;
-            }
+            string enc = I.currentSettings.outSettings.Encoder.ToString();
 
             if (enc.ToLowerInvariant().Contains("nvenc") && !(await FfmpegCommands.IsEncoderCompatible(enc)))
             {
@@ -253,33 +236,30 @@ namespace Flowframes.Main
             return true;
         }
 
-        public static async Task<Size> GetOutputResolution(string inputPath, bool print, bool returnZeroIfUnchanged = false)
+        public static async Task<Size> GetOutputResolution(string inputPath, bool pad, bool print = false)
         {
             Size resolution = await GetMediaResolutionCached.GetSizeAsync(inputPath);
-            return GetOutputResolution(resolution, print, returnZeroIfUnchanged);
+            return GetOutputResolution(resolution, pad, print);
         }
 
-        public static Size GetOutputResolution(Size inputRes, bool print = false, bool returnZeroIfUnchanged = false)
+        public static Size GetOutputResolution(Size inputRes, bool pad, bool print = false)
         {
-            int maxHeightValue = Config.GetInt(Config.Key.maxVidHeight);
-            int maxHeight = RoundDivisibleBy(maxHeightValue, FfmpegCommands.GetPadding());
+            Size res = new Size(inputRes.Width, inputRes.Height);
+            int maxHeight = Config.GetInt(Config.Key.maxVidHeight);
+            int mod = pad ? FfmpegCommands.GetModulo() : 1;
+            float factor = res.Height > maxHeight ? (float)maxHeight / res.Height : 1f; // Calculate downscale factor if bigger than max, otherwise just use 1x
+            Logger.Log($"Un-rounded downscaled size: {(res.Width * factor).ToString("0.###")}x{(res.Height * factor).ToString("0.###")}", true);
+            int width = RoundDivisibleBy((res.Width * factor).RoundToInt(), mod);
+            int height = RoundDivisibleBy((res.Height * factor).RoundToInt(), mod);
+            res = new Size(width, height);
 
-            if (inputRes.Height > maxHeight)
-            {
-                float factor = (float)maxHeight / inputRes.Height;
-                Logger.Log($"Un-rounded downscaled size: {(inputRes.Width * factor).ToString("0.00")}x{maxHeightValue}", true);
-                int width = RoundDivisibleBy((inputRes.Width * factor).RoundToInt(), FfmpegCommands.GetPadding());
-                if (print)
-                    Logger.Log($"Video is bigger than the maximum - Downscaling to {width}x{maxHeight}.");
-                return new Size(width, maxHeight);
-            }
-            else
-            {
-                if (returnZeroIfUnchanged)
-                    return new Size();
-                else
-                    return inputRes;
-            }
+            if (print && factor < 1f)
+                Logger.Log($"Video is bigger than the maximum - Downscaling to {width}x{height}.");
+
+            if (res != inputRes)
+                Logger.Log($"Scaled {inputRes.Width}x{inputRes.Height} to {res.Width}x{res.Height}", true);
+
+            return res;
         }
 
         public static int RoundDivisibleBy(int number, int divisibleBy)     // Round to a number that's divisible by 2 (for h264 etc)
@@ -305,7 +285,7 @@ namespace Flowframes.Main
                 return false;
             }
 
-            if(current.outMode == I.OutMode.VidGif)
+            if (current.outSettings.Format == Enums.Output.Format.Gif)
             {
                 Logger.Log($"Not Using AutoEnc: Using GIF output", true);
                 return false;
@@ -376,6 +356,14 @@ namespace Flowframes.Main
                 return (int)Math.Floor(factor) - 1;
             else
                 return factor.RoundToInt();
+        }
+
+        public static Fraction AskForFramerate(string mediaName, bool isImageSequence = true)
+        {
+            string text = $"Please enter an input frame rate to use for{(isImageSequence ? " the image sequence" : "")} '{mediaName.Trunc(80)}'.";
+            PromptForm form = new PromptForm("Enter Frame Rate", text, "15");
+            form.ShowDialog();
+            return new Fraction(form.EnteredText);
         }
     }
 }
