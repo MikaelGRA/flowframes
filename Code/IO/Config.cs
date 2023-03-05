@@ -368,7 +368,6 @@ namespace Flowframes.IO
             vsRtShowOsd,
             vsUseLsmash,
             lastOutputSettings,
-            vsUseLsmash,
             depanningThresh,
             depanning,
             depanningMaxConsecutive,
